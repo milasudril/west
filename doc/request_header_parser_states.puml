@@ -1,0 +1,37 @@
+@startuml
+hide empty description
+[*] --> req_line_read_method
+
+req_line_read_method --> req_line_read_target : \x20
+
+req_line_read_target --> req_line_read_protocol_name : \x20
+
+req_line_read_protocol_name --> req_line_read_version_major : \x2f
+
+req_line_read_version_major --> req_line_read_version_minor : \x2e
+
+req_line_read_version_minor --> fields_terminate_at_no_field_name : «newline»
+
+fields_terminate_at_no_field_name --> fields_read_name : «tchar»
+fields_terminate_at_no_field_name --> [*] : «newline»
+
+fields_read_name --> fields_skip_ws_before_field_value : \x3a
+fields_read_name --> fields_read_name : «tchar»
+
+fields_skip_ws_before_field_value --> fields_read_value : «vchar»
+fields_skip_ws_before_field_value --> fields_terminate_at_no_field_name : «newline»
+
+fields_read_value --> fields_check_continuation : «newline»
+fields_read_value --> fields_read_value : «vchar»
+
+fields_check_continuation --> fields_read_name : «tchar»
+fields_check_continuation --> fields_skip_ws_after_newline : \x09
+fields_check_continuation --> fields_skip_ws_after_newline : \x20
+fields_check_continuation --> [*] : «newline»
+
+fields_skip_ws_after_newline --> fields_skip_ws_after_newline : \x09
+fields_skip_ws_after_newline --> fields_skip_ws_after_newline : \x20
+fields_skip_ws_after_newline --> fields_check_continuation : «newline»
+fields_skip_ws_after_newline --> fields_read_value : «vchar»
+
+@enduml

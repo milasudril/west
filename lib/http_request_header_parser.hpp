@@ -20,9 +20,9 @@ namespace west::http
 			fields_terminate_at_no_field_name,
 			fields_read_name,
 			fields_skip_ws_before_field_value,
-			fields_read_field_value,
+			fields_read_value,
+			fields_check_continuation,
 			fields_skip_ws_after_newline,
-			fields_read_obs_fold,
 
 			skip_lf_after_cr,
 			skip_cr_after_lf
