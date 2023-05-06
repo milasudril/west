@@ -1,0 +1,2 @@
+# west
+Web server template
