@@ -1,0 +1,38 @@
+{
+	"maikeconfig":
+	{
+		"source_file_info_loaders":
+		{
+			"app":
+			{
+				"compiler":
+				{
+					"config":
+					{
+						"cflags":["-g", "-fprofile-arcs", "-ftest-coverage", "-fno-inline", "-fno-early-inlining", "-DCOVERAGE_BUILD", "-fconcepts-diagnostics-depth=2"]
+					}
+				}
+			},
+			"cxx":
+			{
+				"compiler":
+				{
+					"config":
+					{
+						"cflags":["-g", "-fprofile-arcs", "-ftest-coverage", "-fno-inline", "-fno-early-inlining", "-DCOVERAGE_BUILD", "-fconcepts-diagnostics-depth=2"]
+					}
+				}
+			},
+			"cxx_test":
+			{
+				"compiler":
+				{
+					"config":
+					{
+						"cflags":["-g", "-fprofile-arcs", "-ftest-coverage", "-fno-inline", "-fno-early-inlining", "-DCOVERAGE_BUILD", "-fconcepts-diagnostics-depth=2"]
+					}
+				}
+			}
+		}
+	}
+}
