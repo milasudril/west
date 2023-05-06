@@ -2,6 +2,7 @@
 #define WEST_HTTP_MESSAGE_HEADER_HPP
 
 #include <string>
+#include <map>
 #include <cstdint>
 
 namespace west::http
@@ -25,13 +26,6 @@ namespace west::http
 
 	private:
 		uint64_t m_value;
-	};
-
-	struct request_line
-	{
-		std::string method;
-		std::string request_target;
-		version http_version;
 	};
 
 	enum class status
@@ -81,6 +75,47 @@ namespace west::http
 		http_version_not_supported = 505
 	};
 
+	class field_map
+	{
+	public:
+		field_map& append(std::string&& field_name, std::string_view value)
+		{
+			auto ip = m_fields.emplace(std::move(field_name), value);
+			if(ip.second)
+			{ return *this; }
+
+			auto& val = ip.first->second;
+			if(value.size() != 0)
+			{ val.append(", ").append(value); }
+			return *this;
+		}
+
+		auto begin() const
+		{ return std::begin(m_fields); }
+
+		auto end() const
+		{ return std::end(m_fields); }
+
+		auto find(std::string_view field_name) const
+		{ return m_fields.find(field_name); }
+
+	private:
+		std::map<std::string, std::string, std::less<>> m_fields;
+	};
+
+	struct request_line
+	{
+		std::string method;
+		std::string request_target;
+		version http_version;
+	};
+
+	struct request_header
+	{
+		struct request_line request_line;
+		field_map fields;
+	};
+
 	struct status_line
 	{
 		version http_version;
@@ -88,6 +123,11 @@ namespace west::http
 		std::string reason_phrase;
 	};
 
+	struct response_header
+	{
+		struct status_line status_line;
+		field_map fields;
+	};
 }
 
 #endif
