@@ -254,9 +254,17 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				switch(ch_in)
 				{
 					case '\r':
+					{
+						auto key = field_name::create(std::move(m_current_field_name));
+						if(!key.has_value())
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_name}; }
+						m_current_field_name.clear();
+						m_req_header.get().fields.append(std::move(*key), *field_value::create(""));
+
 						m_state_after_newline = state::fields_terminate_at_no_field_name;
 						m_current_state = state::expect_linefeed;
 						break;
+					}
 
 					default:
 						m_buffer += ch_in;
