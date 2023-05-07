@@ -96,8 +96,8 @@ namespace west::http
 			fields_check_continuation,
 			fields_skip_ws_after_newline,
 
-			expect_linefeed,
-			expect_carriage_return
+			expect_carriage_return,
+			expect_linefeed
 		};
 
 		state m_current_state;
@@ -188,6 +188,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						m_buffer += ch_in;
 				}
 				break;
+
 			case state::req_line_read_protocol_version_minor:
 				if(ch_in == '\n' || ch_in == '\r')
 				{
@@ -209,6 +210,19 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 					// FIXME: Check invalid char
 					m_buffer += ch_in;
 				}
+				break;
+
+			case state::expect_carriage_return:
+				if(ch_in != '\r')
+				{ --ptr; }
+				m_current_state = m_state_after_newline;
+				break;
+
+			case state::expect_linefeed:
+				if(ch_in != '\n')
+				{ --ptr; }
+				m_current_state = m_state_after_newline;
+				break;
 
 			default:
 				break;
