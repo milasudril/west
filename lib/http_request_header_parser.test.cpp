@@ -29,4 +29,9 @@ Sec-Fetch-User: ?1
 
 	auto res = parser.parse(serialized_header);
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::completed);
+
+	EXPECT_EQ(header.request_line.method, "GET");
+	EXPECT_EQ(header.request_line.request_target, "/");
+	EXPECT_EQ(header.request_line.http_version.major(), 1);
+	EXPECT_EQ(header.request_line.http_version.minor(), 1);
 }
