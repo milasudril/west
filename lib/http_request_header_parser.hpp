@@ -144,13 +144,11 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
 
 			case state::req_line_read_req_target:
-				// TODO: Parse URI?
 				switch(ch_in)
 				{
 					case ' ':
@@ -160,7 +158,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
@@ -177,7 +174,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
@@ -197,7 +193,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
@@ -218,7 +213,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
@@ -237,7 +231,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 						m_current_state = state::fields_read_name;
 				}
@@ -253,7 +246,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 				}
 				break;
@@ -267,8 +259,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Only continue if not whitespace
-						// FIXME: Check invalid char
 						m_buffer += ch_in;
 						m_current_state = state::fields_read_value;
 				}
@@ -331,7 +321,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(ch_in != '\t' && ch_in != ' ')
 						{
 							m_buffer += ' ';
-							// FIXME: Check invalid char
 							m_buffer += ch_in;
 							m_current_state = state::fields_read_value;
 						}
