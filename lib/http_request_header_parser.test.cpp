@@ -74,6 +74,7 @@ TESTCASE(west_http_request_header_parser_parse_no_fields)
 	EXPECT_EQ(header.request_line.http_version.major(), 1);
 	EXPECT_EQ(header.request_line.http_version.minor(), 1);
 	EXPECT_EQ(std::string_view{res.ptr}, "Some additional data");
+	EXPECT_EQ(header.fields.empty(), true);
 }
 
 TESTCASE(west_http_request_header_parser_parse_last_field_has_no_value)
@@ -93,4 +94,5 @@ TESTCASE(west_http_request_header_parser_parse_last_field_has_no_value)
 	EXPECT_EQ(header.request_line.http_version.major(), 1);
 	EXPECT_EQ(header.request_line.http_version.minor(), 1);
 	EXPECT_EQ(std::string_view{res.ptr}, "Some additional data");
+	EXPECT_EQ(header.fields.find("a-field")->second, "");
 }

@@ -190,6 +190,9 @@ namespace west::http
 		auto find(std::string_view field_name) const
 		{ return m_fields.find(field_name); }
 
+		[[nodiscard]] bool empty() const
+		{ return m_fields.empty(); }
+
 	private:
 		std::map<field_name, std::string, std::less<>> m_fields;
 	};
