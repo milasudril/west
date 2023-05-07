@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <algorithm>
+#include <ranges>
 
 namespace west::http
 {
@@ -96,6 +97,9 @@ namespace west::http
 			|| ch == '[' || ch == '\\' || ch == ']' || ch == '{' || ch == '}' || ch == 127;
 	}
 
+	constexpr bool is_whitespace(char ch)
+	{ return (ch >= '\0' && ch <= ' ')  || ch == 127; }
+
 	class field_name
 	{
 	public:
@@ -117,10 +121,7 @@ namespace west::http
 		auto operator<=>(field_name const&) const = default;
 
 		auto operator<=>(std::string_view val) const
-		{
-			return m_value <=> val;
-		}
-
+		{ return m_value <=> val; }
 
 		auto const& value() const { return m_value; }
 
@@ -130,18 +131,53 @@ namespace west::http
 		std::string m_value;
 	};
 
+	class field_value
+	{
+	public:
+		field_value() = default;
+
+		static std::optional<field_value> create(std::string_view str)
+		{
+			if(std::ranges::any_of(str, [](auto val){
+				return is_whitespace(val) && val != ' ' && val != '\t';
+			}))
+			{return std::nullopt;}
+
+			auto first_whitespace = std::ranges::find_if_not(str, is_whitespace);
+			if(first_whitespace == std::end(str))
+			{ return field_value{}; }
+
+			auto last_whitespace = std::ranges::find_if_not(std::ranges::reverse_view{str}, is_whitespace);
+
+			return field_value{std::string{first_whitespace, last_whitespace.base()}};
+		}
+
+		auto operator<=>(field_value const&) const = default;
+
+		auto operator<=>(std::string_view val) const
+		{ return m_value <=> val; }
+
+		auto const& value() const { return m_value; }
+
+	private:
+		explicit field_value(std::string&& string):m_value{std::move(string)}{}
+		std::string m_value;
+	};
+
 	class field_map
 	{
 	public:
-		field_map& append(field_name&& key, std::string_view value)
+		field_map& append(field_name&& key, field_value const& value)
 		{
-			auto ip = m_fields.emplace(std::move(key), value);
+			// TODO: In first case, we should be able to move value, but we still need to append
+			//       `value` if `key` already exists
+			auto ip = m_fields.emplace(std::move(key), value.value());
 			if(ip.second)
 			{ return *this; }
 
 			auto& val = ip.first->second;
-			if(value.size() != 0)
-			{ val.append(", ").append(value); }
+			if(value.value().size() != 0)
+			{ val.append(", ").append(value.value()); }
 			return *this;
 		}
 

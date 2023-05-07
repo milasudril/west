@@ -24,7 +24,8 @@ namespace west::http
 		wrong_protocol,
 		bad_protocol_version,
 		expected_linefeed,
-		bad_field_name
+		bad_field_name,
+		bad_field_value
 	};
 
 	constexpr char const* to_string(req_header_parser_error_code ec)
@@ -48,6 +49,9 @@ namespace west::http
 
 			case req_header_parser_error_code::bad_field_name:
 				return "Bad field name";
+
+				case req_header_parser_error_code::bad_field_value:
+				return "Bad field value";
 		}
 
 		__builtin_unreachable();
@@ -296,15 +300,21 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						if(auto key = field_name::create(std::move(m_current_field_name)); key.has_value())
-						{
-							m_req_header.get().fields.append(std::move(*key), m_buffer);
-							m_buffer.clear();
-							m_buffer += ch_in;
-							m_current_state = state::fields_read_name;
-						}
-						else
+					{
+						auto key = field_name::create(std::move(m_current_field_name));
+						if(!key.has_value())
 						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_name}; }
+						m_current_field_name.clear();
+
+						auto value = field_value::create(std::move(m_buffer));
+						if(!value.has_value())
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_value}; }
+
+						m_req_header.get().fields.append(std::move(*key), *value);
+						m_buffer.clear();
+						m_buffer += ch_in;
+						m_current_state = state::fields_read_name;
+					}
 
 				}
 				break;
