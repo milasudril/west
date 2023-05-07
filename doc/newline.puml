@@ -1,0 +1,6 @@
+@startuml
+hide empty description
+state "<U+00AB>current_state<U+00BB>" as current_state
+current_state --> expect_linefeed : \x0d
+expect_linefeed --> state_after_newline : \x0a
+@enduml

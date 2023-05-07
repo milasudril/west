@@ -22,7 +22,8 @@ namespace west::http
 		completed,
 		more_data_needed,
 		wrong_protocol,
-		bad_protocol_version
+		bad_protocol_version,
+		expected_linefeed
 	};
 
 	constexpr char const* to_string(req_header_parser_error_code ec)
@@ -39,6 +40,9 @@ namespace west::http
 				return "Wrong protocol";
 
 			case req_header_parser_error_code::bad_protocol_version:
+				return "Bad bad_protocol_version";
+
+			case req_header_parser_error_code::expected_linefeed:
 				return "Bad bad_protocol_version";
 		}
 
@@ -96,13 +100,14 @@ namespace west::http
 			fields_check_continuation,
 			fields_skip_ws_after_newline,
 
-			expect_carriage_return,
-			expect_linefeed
+			expect_linefeed,
+			expect_linefeed_and_return
 		};
 
 		state m_current_state;
 		state m_state_after_newline;
 		std::string m_buffer;
+		std::string m_current_field_name;
 		std::reference_wrapper<request_header> m_req_header;
 	};
 }
@@ -137,6 +142,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				break;
 
 			case state::req_line_read_req_target:
+				// TODO: Parse URI?
 				switch(ch_in)
 				{
 					case ' ':
@@ -189,42 +195,134 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				break;
 
 			case state::req_line_read_protocol_version_minor:
-				if(ch_in == '\n' || ch_in == '\r')
+				switch(ch_in)
 				{
-					if(auto val = to_number<uint32_t>(m_buffer); val.has_value())
-					{
-						m_req_header.get().request_line.http_version.minor(*val);
-						m_state_after_newline = state::fields_terminate_at_no_field_name;
-						m_buffer.clear();
-						if(ch_in == '\n')
-						{ m_current_state = state::expect_carriage_return; }
+					case '\r':
+						if(auto val = to_number<uint32_t>(m_buffer); val.has_value())
+						{
+							m_req_header.get().request_line.http_version.minor(*val);
+							m_state_after_newline = state::fields_terminate_at_no_field_name;
+							m_buffer.clear();
+							m_current_state = state::expect_linefeed;
+						}
 						else
-						{ m_current_state = state::expect_linefeed; }
-					}
-					else
-					{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_protocol_version}; }
-				}
-				else
-				{
-					// FIXME: Check invalid char
-					m_buffer += ch_in;
-				}
-				break;
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_protocol_version}; }
+						break;
 
-			case state::expect_carriage_return:
-				if(ch_in != '\r')
-				{ --ptr; }
-				m_current_state = m_state_after_newline;
+					default:
+						// FIXME: Check invalid char
+						m_buffer += ch_in;
+				}
 				break;
 
 			case state::expect_linefeed:
 				if(ch_in != '\n')
-				{ --ptr; }
+				{ return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed}; }
 				m_current_state = m_state_after_newline;
 				break;
 
-			default:
+			case state::fields_terminate_at_no_field_name:
+				switch(ch_in)
+				{
+					case '\r':
+						m_current_state = state::expect_linefeed_and_return;
+						break;
+
+					default:
+						// FIXME: Check invalid char
+						m_buffer += ch_in;
+						m_current_state = state::fields_read_name;
+				}
 				break;
+
+			case state::fields_read_name:
+				switch(ch_in)
+				{
+					case ':':
+						m_current_field_name = std::move(m_buffer);
+						m_buffer.clear();
+						m_current_state = state::fields_skip_ws_before_field_value;
+						break;
+
+					default:
+						// FIXME: Check invalid char
+						m_buffer += ch_in;
+				}
+				break;
+
+			case state::fields_skip_ws_before_field_value:
+				switch(ch_in)
+				{
+					case '\r':
+						m_state_after_newline = state::fields_terminate_at_no_field_name;
+						m_current_state = state::expect_linefeed;
+						break;
+
+					default:
+						// FIXME: Only continue if not whitespace
+						// FIXME: Check invalid char
+						m_buffer += ch_in;
+						m_current_state = state::fields_read_name;
+				}
+				break;
+
+			case state::fields_read_value:
+				switch(ch_in)
+				{
+					case '\r':
+						m_state_after_newline = state::fields_check_continuation;
+						m_current_state = state::expect_linefeed;
+						break;
+
+					default:
+						m_buffer += ch_in;
+				}
+				break;
+
+			case state::fields_check_continuation:
+				switch(ch_in)
+				{
+					case '\t':
+					case ' ':
+						m_current_state = state::fields_skip_ws_after_newline;
+						break;
+
+					case '\r':
+						m_state_after_newline = state::expect_linefeed_and_return;
+						break;
+
+					default:
+						// FIXME: Check in valid char
+						m_req_header.get().fields.append(std::move(m_current_field_name), m_buffer);
+						m_buffer.clear();
+						m_buffer += ch_in;
+						m_current_state = state::fields_read_name;
+				}
+				break;
+
+			case state::fields_skip_ws_after_newline:
+				switch(ch_in)
+				{
+					case '\r':
+						m_state_after_newline = state::fields_check_continuation;
+						break;
+
+					default:
+						if(ch_in != '\t' && ch_in != ' ')
+						{
+							m_buffer += ' ';
+							// FIXME: Check invalid char
+							m_buffer += ch_in;
+							m_current_state = state::fields_read_value;
+						}
+				}
+				break;
+
+			case state::expect_linefeed_and_return:
+				if(ch_in == '\n')
+				{ return req_header_parse_result{ptr, req_header_parser_error_code::completed}; }
+				else
+				{ return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed}; }
 		}
 	}
 }
