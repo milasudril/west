@@ -10,7 +10,7 @@ namespace west::http
 	class version
 	{
 	public:
-		constexpr version():version{1, 1} {}
+		constexpr version():version{0, 0} {}
 
 		constexpr explicit version(uint32_t major, uint32_t minor):
 		m_value{(static_cast<uint64_t>(major) << 32llu) | minor}
@@ -23,6 +23,18 @@ namespace west::http
 
 		constexpr uint32_t major() const
 		{ return static_cast<uint32_t>(m_value >> 32llu); }
+
+		constexpr version& minor(uint32_t val)
+		{
+			m_value = (m_value & 0xffff'ffff'0000'0000) | val;
+			return *this;
+		}
+
+		constexpr version& major(uint32_t val)
+		{
+			m_value = (m_value & 0xffff'ffff) | (static_cast<uint64_t>(val) << 32llu);
+			return *this;
+		}
 
 	private:
 		uint64_t m_value;
