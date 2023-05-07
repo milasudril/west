@@ -24,6 +24,4 @@ current_state --> expect_carriage_return : \x0a
 state "<U+00AB>state_after_newline<U+00BB>" as state_after_newline
 expect_carriage_return : If not \0x0d, decrement pointer
 expect_carriage_return --> state_after_newline
-
-
 @enduml

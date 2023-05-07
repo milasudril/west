@@ -89,15 +89,15 @@
                 "config": {},
                 "loader": "extension"
             },
-            "generic_example": {
+            "plantuml": {
                 "compiler": {
                     "config": {},
-                    "recipe": "",
+                    "recipe": "build_scripts/plantuml.py",
                     "use_get_tags": 0
                 },
                 "config": {
-                    "filename_ext_replacement_mode": "append",
-                    "target_filename_ext": ""
+                    "filename_ext_replacement_mode": "replace",
+                    "target_filename_ext": "svg"
                 },
                 "loader": "generic"
             }
@@ -109,7 +109,8 @@
                 ".cpp": "cxx",
                 ".hpp": "cxx",
                 ".py": "extension",
-                ".test.cpp": "cxx_test"
+                ".test.cpp": "cxx_test",
+                ".puml": "plantuml"
             },
             "input_filter": [
                 "^\\.",
