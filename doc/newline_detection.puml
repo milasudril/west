@@ -1,0 +1,29 @@
+@startuml
+hide empty description
+
+:«newline»;
+if (cr detected) then (yes)
+	:Set state_after_newline to «next state»;
+	:Set current_state to expect_linefeed;
+else (regular linefeed)
+	:Set state_after_newline to «next state»;
+	:Set current_state to expect_carriage_return;
+endif
+:process next char;
+@enduml
+
+@startuml
+hide empty description
+state "<U+00AB>current_state<U+00BB>" as current_state
+current_state --> expect_linefeed : \x0d
+expect_linefeed : If not \0x0a, decrement pointer
+state "<U+00AB>state_after_newline<U+00BB>" as state_after_newline
+expect_linefeed --> state_after_newline
+
+current_state --> expect_carriage_return : \x0a
+state "<U+00AB>state_after_newline<U+00BB>" as state_after_newline
+expect_carriage_return : If not \0x0d, decrement pointer
+expect_carriage_return --> state_after_newline
+
+
+@enduml
