@@ -117,7 +117,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 		{ return req_header_parse_result{ptr, req_header_parser_error_code::more_data_needed}; }
 
 		auto ch_in = *ptr;
-		(void)ch_in;
 		++ptr;
 
 		switch(m_current_state)
