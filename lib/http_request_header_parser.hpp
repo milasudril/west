@@ -43,7 +43,7 @@ namespace west::http
 				return "Bad bad_protocol_version";
 
 			case req_header_parser_error_code::expected_linefeed:
-				return "Bad bad_protocol_version";
+				return "Expected linefeed";
 		}
 
 		__builtin_unreachable();
@@ -262,7 +262,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						// FIXME: Only continue if not whitespace
 						// FIXME: Check invalid char
 						m_buffer += ch_in;
-						m_current_state = state::fields_read_name;
+						m_current_state = state::fields_read_value;
 				}
 				break;
 
@@ -288,7 +288,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					case '\r':
-						m_state_after_newline = state::expect_linefeed_and_return;
+						m_current_state = state::expect_linefeed_and_return;
 						break;
 
 					default:
@@ -305,6 +305,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				{
 					case '\r':
 						m_state_after_newline = state::fields_check_continuation;
+						m_current_state = state::expect_linefeed;
 						break;
 
 					default:

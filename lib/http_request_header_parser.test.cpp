@@ -21,7 +21,7 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 "Sec-Fetch-Mode: navigate\r\n"
 "Sec-Fetch-Site: none\r\n"
 "Sec-Fetch-User: ?1\r\n"
-"\r\n"};
+"\r\nSome additional data"};
 
 	west::http::request_header header{};
 	west::http::request_header_parser parser{header};
@@ -33,4 +33,5 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 	EXPECT_EQ(header.request_line.request_target, "/");
 	EXPECT_EQ(header.request_line.http_version.major(), 1);
 	EXPECT_EQ(header.request_line.http_version.minor(), 1);
+	EXPECT_EQ(std::string_view{res.ptr}, "Some additional data");
 }
