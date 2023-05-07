@@ -23,7 +23,8 @@ namespace west::http
 		more_data_needed,
 		wrong_protocol,
 		bad_protocol_version,
-		expected_linefeed
+		expected_linefeed,
+		bad_field_name
 	};
 
 	constexpr char const* to_string(req_header_parser_error_code ec)
@@ -40,10 +41,13 @@ namespace west::http
 				return "Wrong protocol";
 
 			case req_header_parser_error_code::bad_protocol_version:
-				return "Bad bad_protocol_version";
+				return "Bad protocol version";
 
 			case req_header_parser_error_code::expected_linefeed:
 				return "Expected linefeed";
+
+			case req_header_parser_error_code::bad_field_name:
+				return "Bad field name";
 		}
 
 		__builtin_unreachable();
@@ -292,11 +296,16 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						break;
 
 					default:
-						// FIXME: Check in valid char
-						m_req_header.get().fields.append(std::move(m_current_field_name), m_buffer);
-						m_buffer.clear();
-						m_buffer += ch_in;
-						m_current_state = state::fields_read_name;
+						if(auto key = field_name::create(std::move(m_current_field_name)); key.has_value())
+						{
+							m_req_header.get().fields.append(std::move(*key), m_buffer);
+							m_buffer.clear();
+							m_buffer += ch_in;
+							m_current_state = state::fields_read_name;
+						}
+						else
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_name}; }
+
 				}
 				break;
 

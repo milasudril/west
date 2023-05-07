@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <optional>
+#include <algorithm>
 
 namespace west::http
 {
@@ -87,12 +89,53 @@ namespace west::http
 		http_version_not_supported = 505
 	};
 
+	constexpr bool is_delimiter(char ch)
+	{
+		return ch == '"' || ch == '(' || ch == ')' || ch == ',' || ch == '/' || ch == ':'
+			|| ch == ';' || ch == '<' || ch == '=' || ch == '>' || ch == '?' || ch == '@'
+			|| ch == '[' || ch == '\\' || ch == ']' || ch == '{' || ch == '}' || ch == 127;
+	}
+
+	class field_name
+	{
+	public:
+		static std::optional<field_name> create(std::string&& str)
+		{
+			if(str.empty())
+			{ return std::nullopt; }
+
+			if(std::ranges::any_of(str, [](auto val){return (val & 0x80) || is_delimiter(val);}))
+			{return std::nullopt;}
+
+			std::ranges::transform(str,
+				std::begin(str),
+				[](unsigned char val){return std::tolower(val);});
+
+			return field_name{std::move(str)};
+		}
+
+		auto operator<=>(field_name const&) const = default;
+
+		auto operator<=>(std::string_view val) const
+		{
+			return m_value <=> val;
+		}
+
+
+		auto const& value() const { return m_value; }
+
+	private:
+		explicit field_name() = default;
+		explicit field_name(std::string&& string):m_value{std::move(string)}{}
+		std::string m_value;
+	};
+
 	class field_map
 	{
 	public:
-		field_map& append(std::string&& field_name, std::string_view value)
+		field_map& append(field_name&& key, std::string_view value)
 		{
-			auto ip = m_fields.emplace(std::move(field_name), value);
+			auto ip = m_fields.emplace(std::move(key), value);
 			if(ip.second)
 			{ return *this; }
 
@@ -112,7 +155,7 @@ namespace west::http
 		{ return m_fields.find(field_name); }
 
 	private:
-		std::map<std::string, std::string, std::less<>> m_fields;
+		std::map<field_name, std::string, std::less<>> m_fields;
 	};
 
 	struct request_line
