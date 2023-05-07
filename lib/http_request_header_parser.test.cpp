@@ -50,9 +50,12 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 	EXPECT_EQ(header.fields.find("dnt")->second, "1");
 	EXPECT_EQ(header.fields.find("connection")->second, "keep-alive");
 	EXPECT_EQ(header.fields.find("key-without-value-1")->second, "");
-	REQUIRE_NE(header.fields.find("key-without-value-2"), std::end(header.fields));
 	EXPECT_EQ(header.fields.find("key-without-value-2")->second, "");
-
+	EXPECT_EQ(header.fields.find("upgrade-insecure-requests")->second, "1");
+	EXPECT_EQ(header.fields.find("sec-fetch-dest")->second, "document");
+	EXPECT_EQ(header.fields.find("sec-fetch-mode")->second, "navigate");
+	EXPECT_EQ(header.fields.find("sec-fetch-site")->second, "none");
+	EXPECT_EQ(header.fields.find("sec-fetch-user")->second, "?1");
 }
 
 TESTCASE(west_http_request_header_parser_parse_no_fields)

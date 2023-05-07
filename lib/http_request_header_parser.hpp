@@ -293,10 +293,6 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						m_current_state = state::fields_skip_ws_after_newline;
 						break;
 
-					case '\r':
-						m_current_state = state::expect_linefeed_and_return;
-						break;
-
 					default:
 					{
 						auto key = field_name::create(std::move(m_current_field_name));
@@ -310,10 +306,14 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 
 						m_req_header.get().fields.append(std::move(*key), *value);
 						m_buffer.clear();
-						m_buffer += ch_in;
-						m_current_state = state::fields_read_name;
+						if(ch_in == '\r')
+						{	m_current_state = state::expect_linefeed_and_return; }
+						else
+						{
+							m_buffer += ch_in;
+							m_current_state = state::fields_read_name;
+						}
 					}
-
 				}
 				break;
 
