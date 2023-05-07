@@ -21,6 +21,19 @@ namespace west::http
 		more_data_needed,
 	};
 
+	constexpr char const* to_string(req_header_parser_error_code ec)
+	{
+		switch(ec)
+		{
+			case req_header_parser_error_code::completed:
+				return "Completed";
+
+			case req_header_parser_error_code::more_data_needed:
+				return "More data needed";
+		}
+		__builtin_unreachable();
+	}
+
 	template<class InputSeqIterator>
 	struct req_header_parse_result
 	{
@@ -77,6 +90,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 		{ return req_header_parse_result{ptr, req_header_parser_error_code::more_data_needed}; }
 
 		auto ch_in = *ptr;
+		(void)ch_in;
 		++ptr;
 	}
 }
