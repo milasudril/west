@@ -4,6 +4,28 @@
 
 #include <testfwk/testfwk.hpp>
 
+TESTCASE(west_http_request_header_parser_errcode_to_string)
+{
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::completed),
+		std::string_view{"Completed"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::more_data_needed),
+		std::string_view{"More data needed"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_request_method),
+		std::string_view{"Bad request method"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_request_target),
+		std::string_view{"Bad request target"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::wrong_protocol),
+		std::string_view{"Wrong protocol"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_protocol_version),
+		std::string_view{"Bad protocol version"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::expected_linefeed),
+		std::string_view{"Expected linefeed"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_field_name),
+		std::string_view{"Bad field name"});
+	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_field_value),
+		std::string_view{"Bad field value"});
+}
+
 TESTCASE(west_http_request_header_parser_parse_complete_header)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
