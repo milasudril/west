@@ -168,6 +168,16 @@ TESTCASE(west_http_request_header_parser_bad_req_method)
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_method);
 }
 
+TESTCASE(west_http_request_header_parser_bad_req_target)
+{
+	std::string_view serialized_header{"GET /foo\x7 HTTP/1.1\r\n"
+"\r\nSome additional data"};
+	west::http::request_header header{};
+	west::http::request_header_parser parser{header};
+	auto res = parser.parse(serialized_header);
+	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_target);
+}
+
 #if 0
 TESTCASE(west_http_request_header_parser_parse_no_fields)
 {
