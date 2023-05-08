@@ -22,6 +22,7 @@ namespace west::http
 		completed,
 		more_data_needed,
 		bad_request_method,
+		bad_request_target,
 		wrong_protocol,
 		bad_protocol_version,
 		expected_linefeed,
@@ -41,6 +42,9 @@ namespace west::http
 
 			case req_header_parser_error_code::bad_request_method:
 				return "Bad request method";
+
+ 			case req_header_parser_error_code::bad_request_target:
+				return "Bad request target";
 
 			case req_header_parser_error_code::wrong_protocol:
 				return "Wrong protocol";
@@ -142,9 +146,9 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				switch(ch_in)
 				{
 					case ' ':
-						m_current_state = state::req_line_read_req_target;
 						if(auto method = request_method::create(std::move(m_buffer)); method.has_value())
 						{
+							m_current_state = state::req_line_read_req_target;
 							m_req_header.get().request_line.method = std::move(*method);
 							m_buffer.clear();
 						}
@@ -161,9 +165,14 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				switch(ch_in)
 				{
 					case ' ':
-						m_current_state = state::req_line_read_protocol_name;
-						m_req_header.get().request_line.request_target = std::move(m_buffer);
-						m_buffer.clear();
+						if(auto req_target = uri::create(std::move(m_buffer)); req_target.has_value())
+						{
+							m_current_state = state::req_line_read_protocol_name;
+							m_req_header.get().request_line.request_target = std::move(*req_target);
+							m_buffer.clear();
+						}
+						else
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_request_target}; }
 						break;
 
 					default:

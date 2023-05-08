@@ -122,6 +122,14 @@ namespace west::http
 		return true;
 	}
 
+	inline auto contains_whitespace(std::string_view str)
+	{
+		if(std::ranges::any_of(str, [](auto val){ return is_whitespace(val); }))
+		{return true;}
+
+		return false;
+	}
+
 	class request_method
 	{
 	public:
@@ -147,6 +155,34 @@ namespace west::http
 
 	private:
 		explicit request_method(std::string&& string):m_value{std::move(string)}{}
+		std::string m_value;
+	};
+
+	class uri
+	{
+	public:
+		uri() = default;
+
+		bool has_value() const { return !m_value.empty(); }
+
+		static std::optional<uri> create(std::string&& str)
+		{
+			if(contains_whitespace(str))
+			{ return std::nullopt; }
+
+			return uri{std::move(str)};
+		}
+
+		bool operator==(uri const&) const = default;
+		bool operator!=(uri const&) const = default;
+		bool operator==(std::string_view other) const
+		{ return m_value == other; }
+
+		bool operator!=(std::string_view other) const
+		{ return m_value != other; }
+
+	private:
+		explicit uri(std::string&& string):m_value{std::move(string)}{}
 		std::string m_value;
 	};
 
@@ -244,7 +280,7 @@ namespace west::http
 	struct request_line
 	{
 		request_method method;
-		std::string request_target;
+		uri request_target;
 		version http_version;
 	};
 
