@@ -111,16 +111,52 @@ namespace west::http
 			});
 	}
 
+	inline auto is_token(std::string_view str)
+	{
+		if(str.empty())
+		{ return false; }
+
+		if(std::ranges::any_of(str, [](auto val){return (val & 0x80) || is_delimiter(val);}))
+		{return false;}
+
+		return true;
+	}
+
+	class request_method
+	{
+	public:
+		request_method() = default;
+
+		bool has_value() const { return !m_value.empty(); }
+
+		static std::optional<request_method> create(std::string&& str)
+		{
+			if(!is_token(str))
+			{ return std::nullopt; }
+
+			return request_method{std::move(str)};
+		}
+
+		bool operator==(request_method const&) const = default;
+		bool operator!=(request_method const&) const = default;
+		bool operator==(std::string_view other) const
+		{ return m_value == other; }
+
+		bool operator!=(std::string_view other) const
+		{ return m_value != other; }
+
+	private:
+		explicit request_method(std::string&& string):m_value{std::move(string)}{}
+		std::string m_value;
+	};
+
 	class field_name
 	{
 	public:
 		static std::optional<field_name> create(std::string&& str)
 		{
-			if(str.empty())
+			if(!is_token(str))
 			{ return std::nullopt; }
-
-			if(std::ranges::any_of(str, [](auto val){return (val & 0x80) || is_delimiter(val);}))
-			{return std::nullopt;}
 
 			return field_name{std::move(str)};
 		}
@@ -207,7 +243,7 @@ namespace west::http
 
 	struct request_line
 	{
-		std::string method;
+		request_method method;
 		std::string request_target;
 		version http_version;
 	};

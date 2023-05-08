@@ -21,6 +21,7 @@ namespace west::http
 	{
 		completed,
 		more_data_needed,
+		bad_request_method,
 		wrong_protocol,
 		bad_protocol_version,
 		expected_linefeed,
@@ -37,6 +38,9 @@ namespace west::http
 
 			case req_header_parser_error_code::more_data_needed:
 				return "More data needed";
+
+			case req_header_parser_error_code::bad_request_method:
+				return "Bad request method";
 
 			case req_header_parser_error_code::wrong_protocol:
 				return "Wrong protocol";
@@ -139,8 +143,13 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				{
 					case ' ':
 						m_current_state = state::req_line_read_req_target;
-						m_req_header.get().request_line.method = std::move(m_buffer);
-						m_buffer.clear();
+						if(auto method = request_method::create(std::move(m_buffer)); method.has_value())
+						{
+							m_req_header.get().request_line.method = std::move(*method);
+							m_buffer.clear();
+						}
+						else
+						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_request_method}; }
 						break;
 
 					default:
