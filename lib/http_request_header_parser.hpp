@@ -285,6 +285,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 					}
 
 					default:
+						// FIXME: Skip whitespace here so we can make field_value ctor only a validator
 						m_buffer += ch_in;
 						m_current_state = state::fields_read_value;
 				}

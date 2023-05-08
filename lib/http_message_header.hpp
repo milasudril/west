@@ -116,7 +116,8 @@ namespace west::http
 		if(str.empty())
 		{ return false; }
 
-		if(std::ranges::any_of(str, [](auto val){return (val & 0x80) || is_delimiter(val);}))
+		if(std::ranges::any_of(str, [](auto val){
+			return (val & 0x80) || is_delimiter(val) || is_whitespace(val);}))
 		{return false;}
 
 		return true;
