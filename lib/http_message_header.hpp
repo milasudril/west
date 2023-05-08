@@ -151,13 +151,13 @@ namespace west::http
 			}))
 			{return std::nullopt;}
 
-			auto first_whitespace = std::ranges::find_if_not(str, is_whitespace);
-			if(first_whitespace == std::end(str))
+			auto first_non_ws = std::ranges::find_if_not(str, is_whitespace);
+			if(first_non_ws == std::end(str))
 			{ return field_value{}; }
 
-			auto last_whitespace = std::ranges::find_if_not(std::ranges::reverse_view{str}, is_whitespace);
+			auto last_non_ws = std::ranges::find_if_not(std::ranges::reverse_view{str}, is_whitespace);
 
-			return field_value{std::string{first_whitespace, last_whitespace.base()}};
+			return field_value{std::string{first_non_ws, last_non_ws.base()}};
 		}
 
 		auto operator<=>(field_value const&) const = default;
