@@ -100,6 +100,17 @@ namespace west::http
 	constexpr bool is_whitespace(char ch)
 	{ return (ch >= '\0' && ch <= ' ')  || ch == 127; }
 
+	inline auto stricmp(std::string_view a, std::string_view b)
+	{
+		return std::lexicographical_compare_three_way(std::begin(a), std::end(a),
+			std::begin(b), std::end(b),
+			[](unsigned char a, unsigned char b) {
+				// NOTE: I assume that the local is "C". It does not make sense to set a local
+				//       in a web server
+				return std::toupper(a) <=> std::toupper(b);
+			});
+	}
+
 	class field_name
 	{
 	public:
@@ -111,17 +122,14 @@ namespace west::http
 			if(std::ranges::any_of(str, [](auto val){return (val & 0x80) || is_delimiter(val);}))
 			{return std::nullopt;}
 
-			std::ranges::transform(str,
-				std::begin(str),
-				[](unsigned char val){return std::tolower(val);});
-
 			return field_name{std::move(str)};
 		}
 
-		auto operator<=>(field_name const&) const = default;
+		auto operator<=>(field_name const& other) const
+		{ return stricmp(m_value, other.m_value); }
 
 		auto operator<=>(std::string_view val) const
-		{ return m_value <=> val; }
+		{ return stricmp(m_value, val); }
 
 		auto const& value() const { return m_value; }
 
