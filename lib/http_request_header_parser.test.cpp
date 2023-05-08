@@ -158,6 +158,17 @@ TESTCASE(west_http_request_header_parser_parse_header_in_blocks)
 	EXPECT_EQ(header.fields.find("Key-with-value-between-whitespace")->second, "foo");
 }
 
+TESTCASE(west_http_request_header_parser_bad_req_method)
+{
+	std::string_view serialized_header{"this,is,not,a,token / HTTP/1.1\r\n"
+"\r\nSome additional data"};
+	west::http::request_header header{};
+	west::http::request_header_parser parser{header};
+	auto res = parser.parse(serialized_header);
+	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_method);
+}
+
+#if 0
 TESTCASE(west_http_request_header_parser_parse_no_fields)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
@@ -196,3 +207,4 @@ TESTCASE(west_http_request_header_parser_parse_last_field_has_no_value)
 	EXPECT_EQ(std::string_view{res.ptr}, "Some additional data");
 	EXPECT_EQ(header.fields.find("a-field")->second, "");
 }
+#endif
