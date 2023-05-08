@@ -19,6 +19,7 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 "Connection: keep-alive\r\n"
 "Key-without-value-1:   \r\n"
 "Key-without-value-2:\r\n"
+"Key-with-value-between-whitespace:  foo   \r\n"
 "Upgrade-Insecure-Requests: 1\r\n"
 "Sec-Fetch-Dest: document\r\n"
 "Sec-Fetch-Mode: navigate\r\n"
@@ -56,6 +57,7 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 	EXPECT_EQ(header.fields.find("sec-fetch-mode")->second, "navigate");
 	EXPECT_EQ(header.fields.find("sec-fetch-site")->second, "none");
 	EXPECT_EQ(header.fields.find("sec-fetch-user")->second, "?1");
+	EXPECT_EQ(header.fields.find("Key-with-value-between-whitespace")->second, "foo");
 }
 
 TESTCASE(west_http_request_header_parser_parse_no_fields)
