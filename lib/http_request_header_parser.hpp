@@ -74,7 +74,7 @@ namespace west::http
 
 		T ret{};
 		auto res = std::from_chars(std::begin(val), std::end(val), ret);
-		if(res.ptr != std::end(val))
+		if(res.ptr != std::end(val) || res.ec == std::errc::result_out_of_range)
 		{ return std::nullopt; }
 
 		return ret;

@@ -26,6 +26,17 @@ TESTCASE(west_http_request_header_parser_errcode_to_string)
 		std::string_view{"Bad field value"});
 }
 
+TESTCASE(west_http_request_header_parser_to_number)
+{
+	EXPECT_EQ(west::http::to_number<uint32_t>("").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("-124").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("4294967296434").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("0xff").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("  4").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("4aser").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("2"), 2);
+}
+
 TESTCASE(west_http_request_header_parser_parse_complete_header)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
