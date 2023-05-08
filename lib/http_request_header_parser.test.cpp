@@ -34,6 +34,7 @@ TESTCASE(west_http_request_header_parser_to_number)
 	EXPECT_EQ(west::http::to_number<uint32_t>("0xff").has_value(), false);
 	EXPECT_EQ(west::http::to_number<uint32_t>("  4").has_value(), false);
 	EXPECT_EQ(west::http::to_number<uint32_t>("4aser").has_value(), false);
+	EXPECT_EQ(west::http::to_number<uint32_t>("4\r\n").has_value(), false);
 	EXPECT_EQ(west::http::to_number<uint32_t>("2"), 2);
 }
 
@@ -187,6 +188,26 @@ TESTCASE(west_http_request_header_parser_wrong_protocol)
 	west::http::request_header_parser parser{header};
 	auto res = parser.parse(serialized_header);
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::wrong_protocol);
+}
+
+TESTCASE(west_http_request_header_parser_bad_version_major)
+{
+	std::string_view serialized_header{"GET /foo HTTP/a.1\r\n"
+"\r\nSome additional data"};
+	west::http::request_header header{};
+	west::http::request_header_parser parser{header};
+	auto res = parser.parse(serialized_header);
+	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_protocol_version);
+}
+
+TESTCASE(west_http_request_header_parser_bad_version_minor)
+{
+	std::string_view serialized_header{"GET /foo HTTP/1.1a\r\n"
+"\r\nSome additional data"};
+	west::http::request_header header{};
+	west::http::request_header_parser parser{header};
+	auto res = parser.parse(serialized_header);
+	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_protocol_version);
 }
 
 #if 0
