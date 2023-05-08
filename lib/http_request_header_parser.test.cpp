@@ -178,6 +178,17 @@ TESTCASE(west_http_request_header_parser_bad_req_target)
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_target);
 }
 
+
+TESTCASE(west_http_request_header_parser_wrong_protocol)
+{
+	std::string_view serialized_header{"GET /foo FTP/1.1\r\n"
+"\r\nSome additional data"};
+	west::http::request_header header{};
+	west::http::request_header_parser parser{header};
+	auto res = parser.parse(serialized_header);
+	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::wrong_protocol);
+}
+
 #if 0
 TESTCASE(west_http_request_header_parser_parse_no_fields)
 {
