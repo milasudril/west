@@ -42,6 +42,11 @@ namespace west::http
 		uint64_t m_value;
 	};
 
+	inline std::string to_string(version ver)
+	{
+		return std::to_string(ver.major()).append(".").append(std::to_string(ver.minor()));
+	}
+
 	enum class status
 	{
 		ok = 200,
