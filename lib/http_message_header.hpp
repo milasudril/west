@@ -43,9 +43,7 @@ namespace west::http
 	};
 
 	inline std::string to_string(version ver)
-	{
-		return std::to_string(ver.major()).append(".").append(std::to_string(ver.minor()));
-	}
+	{ return std::to_string(ver.major()).append(".").append(std::to_string(ver.minor())); }
 
 	enum class status
 	{
@@ -84,7 +82,7 @@ namespace west::http
 		precondition_required = 428,
 		too_many_requests = 429,
 		request_header_fields_too_large = 431,
-		unavailable_for_legal_resons = 451,
+		unavailable_for_legal_reasons = 451,
 
 		internal_server_error = 500,
 		not_implemented = 501,
@@ -94,11 +92,103 @@ namespace west::http
 		http_version_not_supported = 505
 	};
 
+	constexpr char const* to_string(status val)
+	{
+		switch(val)
+		{
+			case status::ok:
+				return "Ok";
+			case status::created:
+				return "Created";
+			case status::accepted:
+				return "Accepted";
+			case status::non_authoritative_information:
+				return "Non-authoritative information";
+			case status::no_content:
+				return "No content";
+			case status::reset_content:
+				return "Reset content";
+			case status::partial_content:
+				return "Partial content";
+
+			case status::bad_request:
+				return "Bad request";
+			case status::unauthorized:
+				return "Unauthorized";
+			case status::payment_required:
+				return "Payment required";
+			case status::forbidden:
+				return "Forbidden";
+			case status::not_found:
+				return "Not found";
+			case status::method_not_allowed:
+				return "Method not allowed";
+			case status::not_acceptable:
+				return "Not acceptable";
+			case status::proxy_authentication_required:
+				return "Proxy authentication required";
+			case status::request_timeout:
+				return "Request timeout";
+			case status::conflict:
+				return "Conflict";
+			case status::gone:
+				return "Gone";
+			case status::length_required:
+				return "Length required";
+			case status::precondition_failed:
+				return "Precondition failed";
+			case status::request_entity_too_large:
+				return "Request entity too large";
+			case status::request_uri_too_long:
+				return "Request uri too long";
+			case status::unsupported_media_type:
+				return "Unsupported media type";
+			case status::requested_range_not_satisfiable:
+				return "Requested range not satisfiable";
+			case status::expectation_failed:
+				return "Expectation failed";
+			case status::i_am_a_teapot:
+				return "I am a teapot";
+			case status::misdirected_request:
+				return "Misdirected request";
+			case status::unprocessable_content:
+				return "Unprocessable content";
+			case status::failed_dependency:
+				return "Failed dependency";
+			case status::too_early:
+				return "Too early";
+			case status::upgrade_required:
+				return "Upgrade required";
+			case status::precondition_required:
+				return "Precondition required";
+			case status::too_many_requests:
+				return "Too many requests";
+			case status::request_header_fields_too_large:
+				return "Request header fields too large";
+			case status::unavailable_for_legal_reasons:
+				return "Unavailable for legal reasons";
+
+			case status::internal_server_error:
+				return "Internal server error";
+			case status::not_implemented:
+				return "Not implemented";
+			case status::bad_gateway:
+				return "Bad gateway";
+			case status::service_unavailable:
+				return "Service unavailable";
+			case status::gateway_timeout:
+				return "Gateway timeout";
+			case status::http_version_not_supported:
+				return "Http version not supported";
+		}
+		__builtin_unreachable();
+	}
+
 	constexpr bool is_delimiter(char ch)
 	{
 		return ch == '"' || ch == '(' || ch == ')' || ch == ',' || ch == '/' || ch == ':'
 			|| ch == ';' || ch == '<' || ch == '=' || ch == '>' || ch == '?' || ch == '@'
-			|| ch == '[' || ch == '\\' || ch == ']' || ch == '{' || ch == '}' || ch == 127;
+			|| ch == '[' || ch == '\\' || ch == ']' || ch == '{' || ch == '}';
 	}
 
 	constexpr bool is_not_printable(char ch)
@@ -175,6 +265,9 @@ namespace west::http
 
 		static std::optional<uri> create(std::string&& str)
 		{
+			if(str.empty())
+			{ return std::nullopt; }
+
 			if(contains_whitespace(str))
 			{ return std::nullopt; }
 
@@ -211,6 +304,16 @@ namespace west::http
 		auto operator<=>(std::string_view val) const
 		{ return stricmp(m_value, val); }
 
+
+		bool operator==(field_name const&) const = default;
+		bool operator!=(field_name const&) const = default;
+
+		bool operator==(std::string_view val) const
+		{ return (*this <=> val) == 0; }
+
+		bool operator!=(std::string_view val) const
+		{ return !(*this == val); }
+
 		auto const& value() const { return m_value; }
 
 	private:
@@ -244,6 +347,12 @@ namespace west::http
 
 		auto operator<=>(std::string_view val) const
 		{ return m_value <=> val; }
+
+		bool operator==(std::string_view val) const
+		{ return m_value == val; }
+
+		bool operator!=(std::string_view val) const
+		{ return m_value != val; }
 
 		auto const& value() const { return m_value; }
 

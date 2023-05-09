@@ -3,7 +3,7 @@
 #include "./http_request_header_parser.hpp"
 
 #include <testfwk/testfwk.hpp>
-#if 0
+
 TESTCASE(west_http_request_header_parser_errcode_to_string)
 {
 	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::completed),
@@ -310,4 +310,3 @@ TESTCASE(west_http_request_header_parser_parse_last_field_has_no_value)
 	EXPECT_EQ(std::string_view{res.ptr}, "Some additional data");
 	EXPECT_EQ(header.fields.find("a-field")->second, "");
 }
-#endif
