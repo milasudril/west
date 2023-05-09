@@ -6,6 +6,8 @@
 #include <functional>
 #include <optional>
 #include <charconv>
+#include <cassert>
+#include <ranges>
 
 namespace west::http
 {
@@ -80,6 +82,15 @@ namespace west::http
 		return ret;
 	}
 
+	inline void rtrim(std::string& str)
+	{
+		auto i = std::ranges::find_if_not(std::ranges::reverse_view{str}, [](auto val){
+			return is_strict_whitespace(val);
+		});
+
+		if(i.base() != std::end(str))
+		{ str.erase(i.base(), std::end(str)); }
+	}
 
 	template<class InputSeqIterator>
 	struct req_header_parse_result
@@ -269,6 +280,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				break;
 
 			case state::fields_skip_ws_before_field_value:
+				assert(m_buffer.empty());
 				switch(ch_in)
 				{
 					case '\r':
@@ -285,9 +297,11 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 					}
 
 					default:
-						// FIXME: Skip whitespace here so we can make field_value ctor only a validator
-						m_buffer += ch_in;
-						m_current_state = state::fields_read_value;
+						if(!is_strict_whitespace(ch_in))
+						{
+							m_buffer += ch_in;
+							m_current_state = state::fields_read_value;
+						}
 				}
 				break;
 
@@ -318,12 +332,12 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(!key.has_value())
 						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_name}; }
 						m_current_field_name.clear();
-
+						rtrim(m_buffer);
 						auto value = field_value::create(std::move(m_buffer));
 						if(!value.has_value())
 						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_value}; }
 
-						m_req_header.get().fields.append(std::move(*key), *value);
+						m_req_header.get().fields.append(std::move(*key), std::move(*value));
 						m_buffer.clear();
 						if(ch_in == '\r')
 						{	m_current_state = state::expect_linefeed_and_return; }

@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <optional>
 #include <algorithm>
-#include <ranges>
 
 namespace west::http
 {
@@ -99,6 +98,9 @@ namespace west::http
 
 	constexpr bool is_whitespace(char ch)
 	{ return (ch >= '\0' && ch <= ' ')  || ch == 127; }
+
+	constexpr bool is_strict_whitespace(char ch)
+	{ return ch == ' ' || ch == '\t'; }
 
 	inline auto stricmp(std::string_view a, std::string_view b)
 	{
@@ -217,20 +219,20 @@ namespace west::http
 	public:
 		field_value() = default;
 
-		static std::optional<field_value> create(std::string_view str)
+		static std::optional<field_value> create(std::string&& str)
 		{
+			if(str.empty())
+			{ return field_value{}; }
+
 			if(std::ranges::any_of(str, [](auto val){
 				return is_whitespace(val) && val != ' ' && val != '\t';
 			}))
-			{return std::nullopt;}
+			{ return std::nullopt; }
 
-			auto first_non_ws = std::ranges::find_if_not(str, is_whitespace);
-			if(first_non_ws == std::end(str))
-			{ return field_value{}; }
+			if(is_whitespace(str.front()) || is_whitespace(str.back()))
+			{ return std::nullopt; }
 
-			auto last_non_ws = std::ranges::find_if_not(std::ranges::reverse_view{str}, is_whitespace);
-
-			return field_value{std::string{first_non_ws, last_non_ws.base()}};
+			return field_value{std::move(str)};
 		}
 
 		auto operator<=>(field_value const&) const = default;
