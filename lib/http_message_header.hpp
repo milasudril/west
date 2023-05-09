@@ -96,7 +96,7 @@ namespace west::http
 			|| ch == '[' || ch == '\\' || ch == ']' || ch == '{' || ch == '}' || ch == 127;
 	}
 
-	constexpr bool is_whitespace(char ch)
+	constexpr bool is_not_printable(char ch)
 	{ return (ch >= '\0' && ch <= ' ')  || ch == 127; }
 
 	constexpr bool is_strict_whitespace(char ch)
@@ -119,7 +119,7 @@ namespace west::http
 		{ return false; }
 
 		if(std::ranges::any_of(str, [](auto val){
-			return (val & 0x80) || is_delimiter(val) || is_whitespace(val);}))
+			return (val & 0x80) || is_delimiter(val) || is_not_printable(val);}))
 		{return false;}
 
 		return true;
@@ -127,7 +127,7 @@ namespace west::http
 
 	inline auto contains_whitespace(std::string_view str)
 	{
-		if(std::ranges::any_of(str, [](auto val){ return is_whitespace(val); }))
+		if(std::ranges::any_of(str, [](auto val){ return is_not_printable(val); }))
 		{return true;}
 
 		return false;
@@ -224,12 +224,12 @@ namespace west::http
 			if(str.empty())
 			{ return field_value{}; }
 
-			if(std::ranges::any_of(str, [](auto val){
-				return is_whitespace(val) && val != ' ' && val != '\t';
-			}))
+			if(is_not_printable(str.front()) || is_not_printable(str.back()))
 			{ return std::nullopt; }
 
-			if(is_whitespace(str.front()) || is_whitespace(str.back()))
+			if(std::ranges::any_of(str, [](auto val){
+				return is_not_printable(val) && !is_strict_whitespace(val);
+			}))
 			{ return std::nullopt; }
 
 			return field_value{std::move(str)};
