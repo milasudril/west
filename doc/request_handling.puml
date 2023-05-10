@@ -1,7 +1,9 @@
 @startuml
 west -> request_handler:set_request_header
+return
 loop while data available
 	west -> request_handler:write_request_body
+	return write result
 	opt failure
 		ref over west
 			Request handling failure
@@ -9,8 +11,10 @@ loop while data available
 	end
 end
 west -> request_handler:get_response_header
+return response header
 loop while data available
 	west -> request_handler:read_request_body
+	return read result
 	opt failure
 		ref over west
 			Request handling failure
