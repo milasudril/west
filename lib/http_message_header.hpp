@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <algorithm>
+#include <stdexcept>
 
 namespace west::http
 {
@@ -376,6 +377,16 @@ namespace west::http
 			if(value.value().size() != 0)
 			{ val.append(", ").append(value.value()); }
 			return *this;
+		}
+
+		field_map& append(std::string&& key, std::string&& value)
+		{
+			auto validated_key = field_name::create(std::move(key));
+			auto validated_value = field_value::create(std::move(value));
+			if(!validated_key || !validated_value)
+			{ throw std::runtime_error{"Tried to write an invalid field name or field value to a HTTP header"}; }
+
+			return append(std::move(*validated_key), *validated_value);
 		}
 
 		auto begin() const

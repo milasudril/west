@@ -10,8 +10,8 @@ TESTCASE(west_http_response_header_serializer_serialize_no_reason_phrase)
 	response.status_line.http_version = west::http::version{1, 1};
 	response.status_line.status_code = west::http::status::i_am_a_teapot;
 	response.fields
-		.append(*west::http::field_name::create("connection"), *west::http::field_value::create("closed"))
-		.append(*west::http::field_name::create("content-type"), *west::http::field_value::create("text/plain"));
+		.append("connection", "closed")
+		.append("content-type", "text/plain");
 
 	west::http::response_header_serializer serializer{response};
 
