@@ -1,0 +1,25 @@
+@startuml
+west -> request_handler:set_request_header
+loop while data available
+	west -> request_handler:write_request_body
+	opt failure
+		ref over west
+			Request handling failure
+		end ref
+	end
+end
+west -> request_handler:get_response_header
+loop while data available
+	west -> request_handler:read_request_body
+	opt failure
+		ref over west
+			Request handling failure
+		end ref
+	end
+end
+opt Keep-alive not possible or not requested
+	ref over west
+		Close connection
+	end ref
+end
+@enduml
