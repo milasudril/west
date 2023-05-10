@@ -1,5 +1,5 @@
-#ifndef WEST_HTTP_REQUEST_PARSER_HPP
-#define WEST_HTTP_REQUEST_PARSER_HPP
+#ifndef WEST_HTTP_REQUEST_HEADER_PARSER_HPP
+#define WEST_HTTP_REQUEST_HEADER_PARSER_HPP
 
 #include "./http_message_header.hpp"
 
