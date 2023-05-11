@@ -13,7 +13,7 @@ namespace west::http
 		more_data_needed
 	};
 
-	struct req_header_parse_result
+	struct resp_header_serialize_result
 	{
 		char* ptr;
 		resp_header_serializer_error_code ec;
@@ -24,7 +24,7 @@ namespace west::http
 	public:
 		inline explicit response_header_serializer(response_header const& resp_header);
 
-		req_header_parse_result serialize(std::span<char> output_buffer)
+		resp_header_serialize_result serialize(std::span<char> output_buffer)
 		{
 			auto const n = std::min(std::size(output_buffer), std::size(m_range_to_write));
 			std::copy_n(std::begin(m_range_to_write), n, std::begin(output_buffer));
@@ -34,7 +34,7 @@ namespace west::http
 				 resp_header_serializer_error_code::completed
 				:resp_header_serializer_error_code::more_data_needed;
 
-			return req_header_parse_result{std::data(output_buffer) + n, ec};
+			return resp_header_serialize_result{std::data(output_buffer) + n, ec};
 		}
 
 	private:
