@@ -3,50 +3,36 @@
 
 #include "./http_request_header_parser.hpp"
 #include "./http_response_header_serializer.hpp"
+#include "./io_interfaces.hpp"
 
 #include <span>
+#include <memory>
 
-namespace west
+namespace west::http
 {
-	struct read_result
-	{
-		char* ptr;
-		bool would_block;
-	};
-
-	struct write_result
-	{
-		char const* ptr;
-		bool would_block;
-	};
-
 	struct header_validation_result
 	{
 	};
 
-	template<class T>
-	concept socket = requires(T x, std::span<char> y, std::span<char const> z)
-	{
-		{x.read(y)} -> std::same_as<read_result>;
-		{x.write(z)} -> std::same_as<write_result>;
-		{x.stop_reading()} -> std::same_as<void>;
-	};
 
 	template<class T>
-	concept http_request_handler = requires(T x, http::request_header header)
+	concept request_handler = requires(T x, request_header header)
 	{
 		{x.set_header(std::move(header))} -> std::same_as<header_validation_result>;
 	};
 
-	template<socket Socket, http_request_handler RequestHandler>
-	class http_session
+	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize = 65536>
+	class session
 	{
 	public:
-		explicit http_session(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
+		explicit session(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
 			m_connection{std::move(connection)},
 			m_request_handler{std::move(req_handler)},
 			m_current_state{state::read_request},
-			m_header_parser{m_req_header}
+			m_buffer{std::make_unique<char[]>(BufferSize)},
+			m_buffer_ptr{m_buffer.get()},
+			m_req_header{std::make_unique<request_header>()},
+			m_req_header_parser{*m_req_header}
 		{}
 
 		void socket_is_ready()
@@ -66,9 +52,11 @@ namespace west
 		enum class state{read_request, write_response};
 		state m_current_state;
 
-		// FIXME: Should not have self-referencial classes
-		http::request_header m_req_header;
-		http::request_header_parser m_header_parser;
+		std::unique_ptr<char[]> m_buffer;
+		char* m_buffer_ptr;
+
+		std::unique_ptr<request_header> m_req_header;
+		std::unique_ptr<request_header_parser> m_req_header_parser;
 	};
 }
 
