@@ -52,10 +52,15 @@ namespace west::http
 		enum class state{read_request, write_response};
 		state m_current_state;
 
+		// Use unique_ptr here to avoid creating self-referencing objects
 		std::unique_ptr<char[]> m_buffer;
 		char* m_buffer_ptr;
 
+		// Use unique_ptr here to avoid creating self-referencing objects
 		std::unique_ptr<request_header> m_req_header;
+
+		// Use unique_ptr here to make prevent m_req_header_parser from outliving
+		// m_req_header
 		std::unique_ptr<request_header_parser> m_req_header_parser;
 	};
 }
