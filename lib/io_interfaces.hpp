@@ -6,13 +6,13 @@ namespace west::io
 	struct read_result
 	{
 		char* ptr;
-		bool would_block;
+		bool operation_would_block;
 	};
 
 	struct write_result
 	{
 		char const* ptr;
-		bool would_block;
+		bool operation_would_block;
 	};
 
 	template<class T>
