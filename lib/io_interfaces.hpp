@@ -3,16 +3,18 @@
 
 namespace west::io
 {
+	enum class io_result{completed, more_data_needed, operation_would_block, error};
+
 	struct read_result
 	{
 		char* ptr;
-		bool operation_would_block;
+		io_result ec;
 	};
 
 	struct write_result
 	{
 		char const* ptr;
-		bool operation_would_block;
+		io_result ec;
 	};
 
 	template<class T>
