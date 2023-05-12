@@ -62,10 +62,10 @@ TESTCASE(west_http_request_header_parser_parse_complete_header)
 "Sec-Fetch-User: ?1\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::completed);
 
 	EXPECT_EQ(header.request_line.method, "GET");
@@ -119,8 +119,7 @@ TESTCASE(west_http_request_header_parser_parse_header_in_blocks)
 "Sec-Fetch-User: ?1\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	while(true)
 	{
@@ -132,6 +131,7 @@ TESTCASE(west_http_request_header_parser_parse_header_in_blocks)
 		}
 		serialized_header = std::string_view{res.ptr, std::end(serialized_header)};
 	}
+	auto header = parser.take_result();
 
 	EXPECT_EQ(header.request_line.method, "GET");
 	EXPECT_EQ(header.request_line.request_target, "/");
@@ -163,9 +163,9 @@ TESTCASE(west_http_request_header_parser_bad_req_method)
 {
 	std::string_view serialized_header{"this,is,not,a,token / HTTP/1.1\r\n"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_method);
 }
 
@@ -173,9 +173,9 @@ TESTCASE(west_http_request_header_parser_bad_req_target)
 {
 	std::string_view serialized_header{"GET /foo\x7 HTTP/1.1\r\n"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_request_target);
 }
 
@@ -184,9 +184,9 @@ TESTCASE(west_http_request_header_parser_wrong_protocol)
 {
 	std::string_view serialized_header{"GET /foo FTP/1.1\r\n"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::wrong_protocol);
 }
 
@@ -194,9 +194,9 @@ TESTCASE(west_http_request_header_parser_bad_version_major)
 {
 	std::string_view serialized_header{"GET /foo HTTP/a.1\r\n"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_protocol_version);
 }
 
@@ -204,8 +204,7 @@ TESTCASE(west_http_request_header_parser_bad_version_minor)
 {
 	std::string_view serialized_header{"GET /foo HTTP/1.1a\r\n"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_protocol_version);
 }
@@ -214,9 +213,9 @@ TESTCASE(west_http_request_header_parser_no_linefeed_after_carriage_return)
 {
 	std::string_view serialized_header{"GET /foo HTTP/1.1\ra"
 "\r\nSome additional data"};
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::expected_linefeed);
 }
 
@@ -225,10 +224,10 @@ TESTCASE(west_http_request_header_parser_parse_no_fields)
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::completed);
 
 	EXPECT_EQ(header.request_line.method, "GET");
@@ -245,10 +244,10 @@ TESTCASE(west_http_request_header_parser_bad_field_name_no_value)
 "foo bar:\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_field_name);
 }
 
@@ -258,10 +257,10 @@ TESTCASE(west_http_request_header_parser_bad_field_name_with_value)
 "foo bar: kaka\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_field_name);
 }
 
@@ -271,10 +270,10 @@ TESTCASE(west_http_request_header_parser_bad_field_value)
 "foo: kaka\x8\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::bad_field_value);
 }
 
@@ -284,10 +283,10 @@ TESTCASE(west_http_request_header_parser_no_linefeed_at_end)
 "foo: kaka\r\n"
 "\rSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
+	auto header = parser.take_result();
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::expected_linefeed);
 }
 
@@ -297,11 +296,11 @@ TESTCASE(west_http_request_header_parser_parse_last_field_has_no_value)
 "a-field:\r\n"
 "\r\nSome additional data"};
 
-	west::http::request_header header{};
-	west::http::request_header_parser parser{header};
+	west::http::request_header_parser parser{};
 
 	auto res = parser.parse(serialized_header);
 	EXPECT_EQ(res.ec, west::http::req_header_parser_error_code::completed);
+	auto header = parser.take_result();
 
 	EXPECT_EQ(header.request_line.method, "GET");
 	EXPECT_EQ(header.request_line.request_target, "/");

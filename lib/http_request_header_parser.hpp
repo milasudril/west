@@ -102,14 +102,16 @@ namespace west::http
 	class request_header_parser
 	{
 	public:
-		explicit request_header_parser(request_header& req_header):
+		explicit request_header_parser():
 			m_current_state{state::req_line_read_method},
-			m_state_after_newline{state::req_line_read_method},
-			m_req_header{req_header}
+			m_state_after_newline{state::req_line_read_method}
 		{}
 
 		template<req_header_parser_input_range InputSeq>
 		auto parse(InputSeq input_seq);
+
+		request_header take_result()
+		{ return std::move(m_req_header); }
 
 	private:
 		enum class state
@@ -135,7 +137,7 @@ namespace west::http
 		state m_state_after_newline;
 		std::string m_buffer;
 		std::string m_current_field_name;
-		std::reference_wrapper<request_header> m_req_header;
+		request_header m_req_header;
 	};
 }
 
@@ -160,7 +162,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(auto method = request_method::create(std::move(m_buffer)); method.has_value())
 						{
 							m_current_state = state::req_line_read_req_target;
-							m_req_header.get().request_line.method = std::move(*method);
+							m_req_header.request_line.method = std::move(*method);
 							m_buffer.clear();
 						}
 						else
@@ -179,7 +181,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(auto req_target = uri::create(std::move(m_buffer)); req_target.has_value())
 						{
 							m_current_state = state::req_line_read_protocol_name;
-							m_req_header.get().request_line.request_target = std::move(*req_target);
+							m_req_header.request_line.request_target = std::move(*req_target);
 							m_buffer.clear();
 						}
 						else
@@ -213,7 +215,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 					case '.':
 						if(auto val = to_number<uint32_t>(m_buffer); val.has_value())
 						{
-							m_req_header.get().request_line.http_version.major(*val);
+							m_req_header.request_line.http_version.major(*val);
 							m_current_state = state::req_line_read_protocol_version_minor;
 							m_buffer.clear();
 						}
@@ -232,7 +234,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 					case '\r':
 						if(auto val = to_number<uint32_t>(m_buffer); val.has_value())
 						{
-							m_req_header.get().request_line.http_version.minor(*val);
+							m_req_header.request_line.http_version.minor(*val);
 							m_state_after_newline = state::fields_terminate_at_no_field_name;
 							m_buffer.clear();
 							m_current_state = state::expect_linefeed;
@@ -289,7 +291,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(!key.has_value())
 						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_name}; }
 						m_current_field_name.clear();
-						m_req_header.get().fields.append(std::move(*key), *field_value::create(""));
+						m_req_header.fields.append(std::move(*key), *field_value::create(""));
 
 						m_state_after_newline = state::fields_terminate_at_no_field_name;
 						m_current_state = state::expect_linefeed;
@@ -337,7 +339,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 						if(!value.has_value())
 						{ return req_header_parse_result{ptr, req_header_parser_error_code::bad_field_value}; }
 
-						m_req_header.get().fields.append(std::move(*key), std::move(*value));
+						m_req_header.fields.append(std::move(*key), std::move(*value));
 						m_buffer.clear();
 						if(ch_in == '\r')
 						{	m_current_state = state::expect_linefeed_and_return; }
