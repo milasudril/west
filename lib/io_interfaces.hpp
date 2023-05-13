@@ -52,7 +52,7 @@ namespace west::io
 	};
 
 	template<class T>
-	concept data_source = requires(T x, std::span<char> y, std::span<char const> z)
+	concept data_source = requires(T x, std::span<char> y)
 	{
 		{x.read(y)} -> std::same_as<read_result>;
 	};
@@ -61,6 +61,12 @@ namespace west::io
 	{
 		size_t bytes_written;
 		operation_result ec;
+	};
+
+	template<class T>
+	concept data_sink = requires(T x, std::span<char const> y)
+	{
+		{x.write(y)} -> std::same_as<write_result>;
 	};
 
 	template<class T>

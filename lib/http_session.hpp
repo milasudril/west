@@ -7,9 +7,25 @@
 
 namespace west::http
 {
+	class write_error_response
+	{
+	public:
+		template<io::data_sink Sink, request_handler RequestHandler, size_t BufferSize>
+		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&,
+ 			Sink&,
+			RequestHandler&)
+		{
+			return session_state_response{
+				.status = session_state_status::io_error,
+				.http_status = status::not_implemented,
+				.error_message = make_unique_cstr("Not implemented")
+			};
+		}
+	};
+
 	enum class session_status{completed, more_data_needed, io_error};
 
-	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize = 65536>
+	template<io::socket Socket, request_handler RequestHandler>
 	class session
 	{
 	public:
@@ -21,7 +37,7 @@ namespace west::http
 
 		auto socket_is_ready()
 		{
-			std::array<char, BufferSize> buffer;
+			std::array<char, 65536> buffer;
 			io::buffer_view buff_view{buffer};
 			while(true)
 			{
@@ -48,10 +64,11 @@ namespace west::http
 					case session_state_status::client_error_detected:
 						// TODO: go to state for writing error report
 						m_connection.stop_reading();
+						m_state = write_error_response{};
 						break;
 
 					case session_state_status::io_error:
-						return session_state_status::io_error;
+						return session_status::io_error;
 				}
 			}
 		}
@@ -59,7 +76,7 @@ namespace west::http
 	private:
 		Socket m_connection;
 		RequestHandler m_request_handler;
-		std::variant<read_request_header> m_state;
+		std::variant<read_request_header, write_error_response> m_state;
 		std::optional<size_t> m_content_length;
 		bool m_keep_alive;
 	};
