@@ -51,7 +51,8 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 					 content_length != std::end(header.fields))
 				{ m_content_length = to_number<size_t>(content_length->second); }
 
-				m_keep_alive = header.fields.contains("keep-alive") && m_content_length.has_value();
+				if(auto connection = header.fields.find("connection"); connection != std::end(header.fields))
+				{ m_keep_alive = (connection->second == "keep-alive" && m_content_length.has_value()); }
 
 				auto res = req_handler.set_header(std::move(header));
 				return session_state_response{

@@ -35,6 +35,8 @@ namespace
 			};
 		}
 
+		char const* get_pointer() const { return m_ptr; }
+
 	private:
 		std::string_view m_buffer;
 		char const* m_ptr;
@@ -45,8 +47,8 @@ namespace
 		auto set_header(west::http::request_header&& header)
 		{
 			this->header = std::move(header);
-			validation_result.http_status = west::http::status::bad_request;
-			validation_result.error_message = west::make_unique_cstr("Some header fields are incorrect");
+			validation_result.http_status = west::http::status::i_am_a_teapot;
+			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
 			return std::move(validation_result);
 		}
 
@@ -69,12 +71,114 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::bad_request);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"Some header fields are incorrect"});
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
 	EXPECT_EQ(reader.get_content_length().has_value(), false);
 	auto const remaining_data = buffer_view.span_to_read();
 	EXPECT_EQ((std::string_view{std::begin(remaining_data), std::end(remaining_data)}), "Some con");
+	EXPECT_EQ(std::string_view{src.get_pointer()}, "tent after header");
+}
 
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_nokeepalive_contentlength)
+{
+	west::http::read_request_header reader;
+
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
+	"content-length: 234\r\n"
+	"\r\n"
+	"Some content after header"}};
+
+	request_handler handler{};
+
+	auto res = reader(buffer_view, src, handler);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::completed);
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(reader.get_keep_alive(), false);
+	REQUIRE_EQ(reader.get_content_length().has_value(), true);
+	EXPECT_EQ(*reader.get_content_length(), 234);
+	EXPECT_EQ(std::string_view{src.get_pointer()}, "Some content after header");
+}
+
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_keepalive_nocontentlength)
+{
+	west::http::read_request_header reader;
+
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
+	"connection: keep-alive\r\n"
+	"\r\n"
+	"Some content after header"}};
+
+	request_handler handler{};
+
+	auto res = reader(buffer_view, src, handler);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::completed);
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(reader.get_keep_alive(), false);
+	EXPECT_EQ(reader.get_content_length().has_value(), false);
+}
+
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_keepalivestrangevalue_contentlength)
+{
+	west::http::read_request_header reader;
+
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
+	"connection: foobar\r\n"
+	"content-length: 123\r\n"
+	"\r\n"
+	"Some content after header"}};
+
+	request_handler handler{};
+
+	auto res = reader(buffer_view, src, handler);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::completed);
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(reader.get_keep_alive(), false);
+	REQUIRE_EQ(reader.get_content_length().has_value(), true);
+	EXPECT_EQ(*reader.get_content_length(), 123);
+}
+
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_keepalive_contentlength)
+{
+	west::http::read_request_header reader;
+
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
+	"connection: keep-alive\r\n"
+	"content-length: 123\r\n"
+	"\r\n"
+	"Some content after header"}};
+
+	request_handler handler{};
+
+	auto res = reader(buffer_view, src, handler);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::completed);
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(reader.get_keep_alive(), true);
+	REQUIRE_EQ(reader.get_content_length().has_value(), true);
+	EXPECT_EQ(*reader.get_content_length(), 123);
 }
