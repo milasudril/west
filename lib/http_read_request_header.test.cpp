@@ -77,7 +77,7 @@ namespace
 		auto set_header(west::http::request_header&& header)
 		{
 			this->header = std::move(header);
-			validation_result.http_status = west::http::status::i_am_a_teapot;
+			validation_result.http_status = west::http::status::accepted;
 			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
 			return std::move(validation_result);
 		}
@@ -101,7 +101,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
@@ -128,7 +128,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
@@ -154,7 +154,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
@@ -179,7 +179,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
@@ -205,7 +205,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), true);
@@ -319,7 +319,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	{
 		auto res = reader(buffer_view, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::completed);
-		EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+		EXPECT_EQ(res.http_status, west::http::status::accepted);
 		EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 		EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 		EXPECT_EQ(reader.get_keep_alive(), true);

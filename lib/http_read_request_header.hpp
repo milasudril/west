@@ -56,7 +56,8 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 
 				auto res = req_handler.set_header(std::move(header));
 				return session_state_response{
-					.status = session_state_status::completed,
+					.status = is_client_error(res.http_status) ?
+						session_state_status::client_error_detected : session_state_status::completed,
 					.http_status = res.http_status,
 					.error_message = std::move(res.error_message)
 				};

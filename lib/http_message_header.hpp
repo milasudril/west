@@ -93,6 +93,13 @@ namespace west::http
 		http_version_not_supported = 505
 	};
 
+	constexpr bool is_client_error(status val)
+	{
+		using underlying_type = std::underlying_type_t<status>;
+		auto const status_val = static_cast<underlying_type>(val);
+		return status_val >= 400 && status_val < 499;
+	}
+
 	constexpr char const* to_string(status val)
 	{
 		switch(val)
