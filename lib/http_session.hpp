@@ -14,13 +14,72 @@ namespace west::http
 	{
 	};
 
-
 	template<class T>
 	concept request_handler = requires(T x, request_header header)
 	{
 		{x.set_header(std::move(header))} -> std::same_as<header_validation_result>;
 	};
 
+	class read_header_request
+	{
+	public:
+		template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
+		void operator()(io::buffer_view<char, BufferSize>& buffer,
+			Socket const& socket,
+			RequestHandler& req_handler)
+		{
+			while(true)
+			{
+				auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
+				buffer.consume_until(parse_result.ptr);
+				switch(parse_result.ec)
+				{
+					case req_header_parser_error_code::completed:
+						req_handler.set_header(m_req_header_parser.take_result());
+						break;
+
+					case req_header_parser_error_code::more_data_needed:
+					{
+						auto const read_result = socket.read(buffer.span_to_write());
+						buffer.reset_with_new_end(read_result.ptr);
+
+						switch(read_result.ec)
+						{
+							case io::operation_result::completed:
+								// The parser needs more data
+								// We do not have any new data
+								// Therefore, there is no idea to continue
+								// This should result in a HTTP/1.1 400 response
+								return;
+
+							case io::operation_result::more_data_present:
+								// We got some data to feed into the parser, keep going
+								break;
+
+							case io::operation_result::operation_would_block:
+								// Suspend operation until we are waken up again
+								return;
+
+							case io::operation_result::error:
+								// I/O failed. Though this would be a HTTP/1.1 500, it is not possible
+								// to write any response at this point
+								return;
+						}
+					}
+
+					default:
+						// Error reported by the parser.
+						// This should result in a HTTP/1.1 4xx response, depending on parser result
+						return;
+				}
+			}
+		}
+
+	private:
+		request_header_parser m_req_header_parser;
+	};
+
+#if 0
 	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize = 65536>
 	class session
 	{
@@ -110,6 +169,6 @@ void west::http::session<Socket, RequestHandler, BufferSize>::do_read_request_he
 				break;
 		}
 	}
+#endif
 }
-
 #endif
