@@ -401,6 +401,9 @@ namespace west::http
 		[[nodiscard]] bool empty() const
 		{ return m_fields.empty(); }
 
+		bool contains(std::string_view field_name) const
+		{ return m_fields.contains(field_name); }
+
 	private:
 		std::map<field_name, std::string, std::less<>> m_fields;
 	};

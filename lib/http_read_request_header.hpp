@@ -12,14 +12,23 @@ namespace west::http
 	class read_request_header
 	{
 	public:
+		read_request_header():m_keep_alive{false}{}
+
 		template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
 			Socket const& socket,
 			RequestHandler& req_handler);
 
+		std::optional<size_t> get_request_size() const
+		{ return m_request_size; }
+
+		bool keep_connection() const
+		{ return m_keep_alive; }
+
 	private:
 		request_header_parser m_req_header_parser;
-		req_header_parser_error_code m_saved_ec;
+		std::optional<size_t> m_request_size;
+		bool m_keep_alive;
 	};
 }
 
@@ -37,7 +46,14 @@ template<west::io::socket Socket, west::http::request_handler RequestHandler, si
 		{
 			case req_header_parser_error_code::completed:
 			{
-				auto res = req_handler.set_header(m_req_header_parser.take_result());
+				auto header = m_req_header_parser.take_result();
+				if(auto content_length = header.fields.find("content-length");
+					 content_length != std::end(header.fields))
+				{ m_request_size = to_number<size_t>(content_length->second); }
+
+				m_keep_alive = header.fields.contains("keep-alive") && m_request_size.has_value();
+
+				auto res = req_handler.set_header(std::move(header));
 				return session_state_response{
 					.status = session_state_status::completed,
 					.http_status = res.http_status,
