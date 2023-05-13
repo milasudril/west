@@ -2,10 +2,9 @@
 #define WEST_HTTP_REQUEST_HEADER_PARSER_HPP
 
 #include "./http_message_header.hpp"
+#include "./utils.hpp"
 
 #include <functional>
-#include <optional>
-#include <charconv>
 #include <cassert>
 #include <ranges>
 
@@ -65,21 +64,6 @@ namespace west::http
 		}
 
 		__builtin_unreachable();
-	}
-
-	template<class T>
-	requires(std::is_arithmetic_v<T>)
-	inline std::optional<T> to_number(std::string_view val)
-	{
-		if(std::begin(val) == std::end(val))
-		{ return std::nullopt; }
-
-		T ret{};
-		auto res = std::from_chars(std::begin(val), std::end(val), ret);
-		if(res.ptr != std::end(val) || res.ec == std::errc::result_out_of_range)
-		{ return std::nullopt; }
-
-		return ret;
 	}
 
 	inline void rtrim(std::string& str)
