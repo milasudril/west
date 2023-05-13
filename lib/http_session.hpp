@@ -19,10 +19,11 @@ namespace west::http
 		void socket_is_ready()
 		{
 			std::array<char, BufferSize> buffer;
+			io::buffer_view buff_view{buffer};
 			while(true)
 			{
-				auto const res = std::visit([&buffer, this](auto& state){
-					return state(io::buffer_view{buffer}, m_connection, m_request_handler);
+				auto const res = std::visit([&buff_view, this](auto& state){
+					return state(buff_view, m_connection, m_request_handler);
 				}, m_state);
 
 				switch(res.status)
