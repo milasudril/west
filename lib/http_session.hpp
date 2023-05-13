@@ -13,7 +13,8 @@ namespace west::http
 	public:
 		explicit session(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
 			m_connection{std::move(connection)},
-			m_request_handler{std::move(req_handler)}
+			m_request_handler{std::move(req_handler)},
+			m_keep_alive{false}
 		{}
 
 		void socket_is_ready()
@@ -29,8 +30,15 @@ namespace west::http
 				switch(res.status)
 				{
 					case session_state_status::completed:
+					{
+						if(auto state = std::get_if<read_request_header>(&m_state); state != nullptr)
+						{
+							m_content_length = state->get_content_length();
+							m_keep_alive = state->get_keep_alive();
+						}
 						// TODO: go to next state
 						break;
+					}
 
 					case session_state_status::more_data_needed:
 						// TODO: Notify caller that operation should continue when data
@@ -53,6 +61,8 @@ namespace west::http
 		Socket m_connection;
 		RequestHandler m_request_handler;
 		std::variant<read_request_header> m_state;
+		std::optional<size_t> m_content_length;
+		bool m_keep_alive;
 	};
 }
 
