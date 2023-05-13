@@ -14,9 +14,9 @@ namespace west::http
 	public:
 		read_request_header():m_keep_alive{false}{}
 
-		template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
+		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
-			Socket const& socket,
+ 			Source const& source,
 			RequestHandler& req_handler);
 
 		std::optional<size_t> get_request_size() const
@@ -32,10 +32,10 @@ namespace west::http
 	};
 }
 
-template<west::io::socket Socket, west::http::request_handler RequestHandler, size_t BufferSize>
+template<west::io::data_source Source, west::http::request_handler RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_header::operator()(
 	io::buffer_view<char, BufferSize>& buffer,
-	Socket const& socket,
+	Source const& source,
 	RequestHandler& req_handler)
 {
 	while(true)
@@ -63,7 +63,7 @@ template<west::io::socket Socket, west::http::request_handler RequestHandler, si
 
 			case req_header_parser_error_code::more_data_needed:
 			{
-				auto const read_result = socket.read(buffer.span_to_write());
+				auto const read_result = source.read(buffer.span_to_write());
 				buffer.reset_with_new_end(read_result.ptr);
 
 				switch(read_result.ec)

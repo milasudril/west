@@ -47,6 +47,12 @@ namespace west::io
 		operation_result ec;
 	};
 
+	template<class T>
+	concept data_source = requires(T x, std::span<char> y, std::span<char const> z)
+	{
+		{x.read(y)} -> std::same_as<read_result>;
+	};
+
 	struct write_result
 	{
 		char const* ptr;
