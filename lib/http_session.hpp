@@ -20,11 +20,21 @@ namespace west::http
 		{x.set_header(std::move(header))} -> std::same_as<header_validation_result>;
 	};
 
+	enum class session_state_result
+	{
+		completed,
+		more_data_needed,
+		client_error_detected,
+		io_error
+	};
+
 	class read_header_request
 	{
 	public:
+		read_header_request():m_saved_ec{req_header_parser_error_code::completed}{}
+
 		template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
-		void operator()(io::buffer_view<char, BufferSize>& buffer,
+		session_state_result operator()(io::buffer_view<char, BufferSize>& buffer,
 			Socket const& socket,
 			RequestHandler& req_handler)
 		{
@@ -36,7 +46,7 @@ namespace west::http
 				{
 					case req_header_parser_error_code::completed:
 						req_handler.set_header(m_req_header_parser.take_result());
-						break;
+						return session_state_result::completed;
 
 					case req_header_parser_error_code::more_data_needed:
 					{
@@ -48,35 +58,35 @@ namespace west::http
 							case io::operation_result::completed:
 								// The parser needs more data
 								// We do not have any new data
-								// Therefore, there is no idea to continue
-								// This should result in a HTTP/1.1 400 response
-								return;
+								// This is a client error
+								m_saved_ec = parse_result.ec;
+								return session_state_result::client_error_detected;
 
 							case io::operation_result::more_data_present:
-								// We got some data to feed into the parser, keep going
 								break;
 
 							case io::operation_result::operation_would_block:
 								// Suspend operation until we are waken up again
-								return;
+								return session_state_result::more_data_needed;
 
 							case io::operation_result::error:
-								// I/O failed. Though this would be a HTTP/1.1 500, it is not possible
-								// to write any response at this point
-								return;
+								return session_state_result::io_error;
 						}
 					}
 
 					default:
-						// Error reported by the parser.
-						// This should result in a HTTP/1.1 4xx response, depending on parser result
-						return;
+						m_saved_ec = parse_result.ec;
+						return session_state_result::client_error_detected;
 				}
 			}
 		}
 
+		auto get_error_message() const
+		{ return to_string(m_saved_ec); }
+
 	private:
 		request_header_parser m_req_header_parser;
+		req_header_parser_error_code m_saved_ec;
 	};
 
 #if 0

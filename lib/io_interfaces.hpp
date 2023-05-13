@@ -39,7 +39,7 @@ namespace west::io
 		T* m_end;
 	};
 
-	enum class operation_result{completed, more_data_present, operation_would_block, error};
+	enum class operation_result{completed, operation_would_block, more_data_present, error};
 
 	struct read_result
 	{
