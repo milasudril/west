@@ -45,6 +45,8 @@ namespace
 		auto set_header(west::http::request_header&& header)
 		{
 			this->header = std::move(header);
+			validation_result.http_status = west::http::status::bad_request;
+			validation_result.error_message = west::make_unique_cstr("Some header fields are incorrect");
 			return std::move(validation_result);
 		}
 
@@ -53,7 +55,7 @@ namespace
 	};
 }
 
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_nokeepalive_nocontentlength_noerrorinheader)
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_nokeepalive_nocontentlength)
 {
 	west::http::read_request_header reader;
 
@@ -67,8 +69,8 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	auto res = reader(buffer_view, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::ok);
-	EXPECT_EQ(res.error_message, nullptr);
+	EXPECT_EQ(res.http_status, west::http::status::bad_request);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Some header fields are incorrect"});
 	EXPECT_EQ(handler.header.request_line.http_version, (west::http::version{1, 1}));
 	EXPECT_EQ(reader.get_keep_alive(), false);
 	EXPECT_EQ(reader.get_content_length().has_value(), false);
