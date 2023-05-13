@@ -12,26 +12,30 @@ namespace west::io
 	public:
 		static constexpr auto buffer_size = N;
 
+		explicit buffer_view(std::array<T, N>& buffer):
+			buffer_view{std::span{buffer}}
+		{}
+
 		explicit buffer_view(std::span<T, N> buffer):
-			m_start{std::begin(buffer)},
-			m_begin{std::begin(buffer)},
-			m_end{std::begin(buffer)}
+			m_start{std::data(buffer)},
+			m_begin{std::data(buffer)},
+			m_end{std::data(buffer)}
 		{}
 
 		std::span<T> span_to_write() const
 		{ return std::span{m_start, m_start + N}; }
 
-		void reset_with_new_end(T* new_end)
+		void reset_with_new_length(size_t length)
 		{
 			m_begin = m_start;
-			m_end = new_end;
+			m_end = m_start + length;
 		}
 
 		std::span<T const> span_to_read() const
 		{ return std::span{m_begin, m_end}; }
 
-		void consume_until(T* ptr)
-		{ m_begin = ptr; }
+		void consume_elements(size_t count)
+		{ m_begin += count; }
 
 	private:
 		T* m_start;
@@ -43,7 +47,7 @@ namespace west::io
 
 	struct read_result
 	{
-		char* ptr;
+		size_t bytes_read;
 		operation_result ec;
 	};
 
@@ -55,7 +59,7 @@ namespace west::io
 
 	struct write_result
 	{
-		char const* ptr;
+		size_t bytes_written;
 		operation_result ec;
 	};
 

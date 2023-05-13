@@ -9,7 +9,7 @@ namespace west::http
 {
 	struct header_validation_result
 	{
-		status http_status;
+		status http_status{status::ok};
 		std::unique_ptr<char[]> error_message;
 	};
 

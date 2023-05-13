@@ -16,18 +16,18 @@ namespace west::http
 
 		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
- 			Source const& source,
+ 			Source& source,
 			RequestHandler& req_handler);
 
-		std::optional<size_t> get_request_size() const
-		{ return m_request_size; }
+		std::optional<size_t> get_content_length() const
+		{ return m_content_length; }
 
-		bool keep_connection() const
+		bool get_keep_alive() const
 		{ return m_keep_alive; }
 
 	private:
 		request_header_parser m_req_header_parser;
-		std::optional<size_t> m_request_size;
+		std::optional<size_t> m_content_length;
 		bool m_keep_alive;
 	};
 }
@@ -35,13 +35,13 @@ namespace west::http
 template<west::io::data_source Source, west::http::request_handler RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_header::operator()(
 	io::buffer_view<char, BufferSize>& buffer,
-	Source const& source,
+	Source& source,
 	RequestHandler& req_handler)
 {
 	while(true)
 	{
 		auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
-		buffer.consume_until(parse_result.ptr);
+		buffer.consume_elements(parse_result.ptr - std::begin(buffer.span_to_read()));
 		switch(parse_result.ec)
 		{
 			case req_header_parser_error_code::completed:
@@ -49,9 +49,9 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 				auto header = m_req_header_parser.take_result();
 				if(auto content_length = header.fields.find("content-length");
 					 content_length != std::end(header.fields))
-				{ m_request_size = to_number<size_t>(content_length->second); }
+				{ m_content_length = to_number<size_t>(content_length->second); }
 
-				m_keep_alive = header.fields.contains("keep-alive") && m_request_size.has_value();
+				m_keep_alive = header.fields.contains("keep-alive") && m_content_length.has_value();
 
 				auto res = req_handler.set_header(std::move(header));
 				return session_state_response{
@@ -64,7 +64,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 			case req_header_parser_error_code::more_data_needed:
 			{
 				auto const read_result = source.read(buffer.span_to_write());
-				buffer.reset_with_new_end(read_result.ptr);
+				buffer.reset_with_new_length(read_result.bytes_read);
 
 				switch(read_result.ec)
 				{
@@ -96,6 +96,8 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 							.error_message = make_unique_cstr("I/O error")
 						};
 				}
+
+				break;
 			}
 
 			default:
