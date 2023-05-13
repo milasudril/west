@@ -7,6 +7,7 @@
 
 #include <span>
 #include <memory>
+#include <cstring>
 
 namespace west::http
 {
@@ -20,7 +21,7 @@ namespace west::http
 		{x.set_header(std::move(header))} -> std::same_as<header_validation_result>;
 	};
 
-	enum class session_state_result
+	enum class session_state_status
 	{
 		completed,
 		more_data_needed,
@@ -28,66 +29,102 @@ namespace west::http
 		io_error
 	};
 
+	auto make_unique_cstr(char const* str)
+	{
+		auto n = strlen(str);
+		auto ret = std::make_unique<char[]>(n + 1);
+		memcpy(ret.get(), str, n);
+		return ret;
+	}
+
+	struct session_state_response
+	{
+		session_state_status status;
+		enum status http_status;
+		std::unique_ptr<char[]> error_message;
+	};
+
 	class read_header_request
 	{
 	public:
-		read_header_request():m_saved_ec{req_header_parser_error_code::completed}{}
-
 		template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
-		session_state_result operator()(io::buffer_view<char, BufferSize>& buffer,
+		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
 			Socket const& socket,
-			RequestHandler& req_handler)
-		{
-			while(true)
-			{
-				auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
-				buffer.consume_until(parse_result.ptr);
-				switch(parse_result.ec)
-				{
-					case req_header_parser_error_code::completed:
-						req_handler.set_header(m_req_header_parser.take_result());
-						return session_state_result::completed;
-
-					case req_header_parser_error_code::more_data_needed:
-					{
-						auto const read_result = socket.read(buffer.span_to_write());
-						buffer.reset_with_new_end(read_result.ptr);
-
-						switch(read_result.ec)
-						{
-							case io::operation_result::completed:
-								// The parser needs more data
-								// We do not have any new data
-								// This is a client error
-								m_saved_ec = parse_result.ec;
-								return session_state_result::client_error_detected;
-
-							case io::operation_result::more_data_present:
-								break;
-
-							case io::operation_result::operation_would_block:
-								// Suspend operation until we are waken up again
-								return session_state_result::more_data_needed;
-
-							case io::operation_result::error:
-								return session_state_result::io_error;
-						}
-					}
-
-					default:
-						m_saved_ec = parse_result.ec;
-						return session_state_result::client_error_detected;
-				}
-			}
-		}
-
-		auto get_error_message() const
-		{ return to_string(m_saved_ec); }
+			RequestHandler& req_handler);
 
 	private:
 		request_header_parser m_req_header_parser;
 		req_header_parser_error_code m_saved_ec;
 	};
+
+	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize>
+	[[nodiscard]] auto read_header_request::operator()(
+		io::buffer_view<char, BufferSize>& buffer,
+		Socket const& socket,
+		RequestHandler& req_handler)
+	{
+		while(true)
+		{
+			auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
+			buffer.consume_until(parse_result.ptr);
+			switch(parse_result.ec)
+			{
+				case req_header_parser_error_code::completed:
+					req_handler.set_header(m_req_header_parser.take_result());
+					return session_state_response{
+						.status = session_state_status::completed,
+						.http_status = status::ok,
+						.error_message = nullptr
+					};
+
+				case req_header_parser_error_code::more_data_needed:
+				{
+					auto const read_result = socket.read(buffer.span_to_write());
+					buffer.reset_with_new_end(read_result.ptr);
+
+					switch(read_result.ec)
+					{
+						case io::operation_result::completed:
+							// The parser needs more data
+							// We do not have any new data
+							// This is a client error
+							return session_state_response{
+								.status = session_state_status::client_error_detected,
+								.http_status = status::bad_request,
+								.error_message = make_unique_cstr(to_string(parse_result.ec))
+							};
+
+						case io::operation_result::more_data_present:
+							break;
+
+						case io::operation_result::operation_would_block:
+							// Suspend operation until we are waken up again
+							return session_state_response{
+								.status = session_state_status::more_data_needed,
+								.http_status = status::ok,
+								.error_message = nullptr
+							};
+
+						case io::operation_result::error:
+							return session_state_response{
+								.status = session_state_status::io_error,
+								.http_status = status::internal_server_error,
+								.error_message = make_unique_cstr("I/O error")
+							};
+					}
+				}
+
+				default:
+					return session_state_response{
+						.status = session_state_status::client_error_detected,
+						.http_status = status::bad_request,
+						.error_message = make_unique_cstr(to_string(parse_result.ec))
+					};
+			}
+		}
+	}
+
+
 
 #if 0
 	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize = 65536>

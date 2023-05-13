@@ -108,9 +108,9 @@ namespace west::http
 		{}
 
 		template<req_header_parser_input_range InputSeq>
-		auto parse(InputSeq input_seq);
+		[[nodiscard]] auto parse(InputSeq input_seq);
 
-		request_header take_result()
+		[[nodiscard]] request_header take_result()
 		{ return std::move(m_req_header); }
 
 	private:
