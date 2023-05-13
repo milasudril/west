@@ -13,6 +13,8 @@ namespace west::http
 {
 	struct header_validation_result
 	{
+		status http_status;
+		std::unique_ptr<char[]> error_message;
 	};
 
 	template<class T>
@@ -70,12 +72,14 @@ namespace west::http
 			switch(parse_result.ec)
 			{
 				case req_header_parser_error_code::completed:
-					req_handler.set_header(m_req_header_parser.take_result());
+				{
+					auto res = req_handler.set_header(m_req_header_parser.take_result());
 					return session_state_response{
 						.status = session_state_status::completed,
-						.http_status = status::ok,
-						.error_message = nullptr
+						.http_status = res.http_status,
+						.error_message = std::move(res.error_message)
 					};
+				}
 
 				case req_header_parser_error_code::more_data_needed:
 				{
