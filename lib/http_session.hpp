@@ -7,6 +7,8 @@
 
 namespace west::http
 {
+	enum class session_status{completed, more_data_needed, io_error};
+
 	template<io::socket Socket, request_handler RequestHandler, size_t BufferSize = 65536>
 	class session
 	{
@@ -17,7 +19,7 @@ namespace west::http
 			m_keep_alive{false}
 		{}
 
-		void socket_is_ready()
+		auto socket_is_ready()
 		{
 			std::array<char, BufferSize> buffer;
 			io::buffer_view buff_view{buffer};
@@ -41,18 +43,15 @@ namespace west::http
 					}
 
 					case session_state_status::more_data_needed:
-						// TODO: Notify caller that operation should continue when data
-						//       is available
-						return;
+						return session_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
 						// TODO: go to state for writing error report
 						m_connection.stop_reading();
-						return;
+						break;
 
 					case session_state_status::io_error:
-						// TODO: Notify that operation should not continue
-						return;
+						return session_state_status::io_error;
 				}
 			}
 		}
