@@ -31,7 +31,7 @@ namespace west::http
 		io_error
 	};
 
-	auto make_unique_cstr(char const* str)
+	inline auto make_unique_cstr(char const* str)
 	{
 		auto n = strlen(str);
 		auto ret = std::make_unique<char[]>(n + 1);
