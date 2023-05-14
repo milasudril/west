@@ -74,6 +74,9 @@ namespace
 		{
 			return west::http::finalize_state_result{};
 		}
+
+		auto process_request_content(std::span<char const>) const
+		{}
 	};
 }
 

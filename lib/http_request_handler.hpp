@@ -17,11 +17,13 @@ namespace west::http
 	};
 
 	template<class T>
-	concept request_handler = requires(T x, request_header const& header)
+	concept request_handler = requires(T x, request_header const& header, std::span<char const> buffer)
 	{
 		{x.finalize_state(read_request_header_tag{}, header)} -> std::same_as<finalize_state_result>;
 
 		{x.finalize_state(read_request_body_tag{})} -> std::same_as<finalize_state_result>;
+
+		{x.process_request_content(buffer)};
 	};
 }
 

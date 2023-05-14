@@ -15,7 +15,7 @@ namespace west::http
 			m_content_length{content_length}
 		{}
 
-		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
+		template<io::data_source Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
@@ -24,7 +24,7 @@ namespace west::http
 	};
 }
 
-template<west::io::data_source Source, west::http::request_handler RequestHandler, size_t BufferSize>
+template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_body::operator()(
 	io::buffer_view<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
@@ -32,7 +32,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 	while(true)
 	{
 		auto const parse_result = session.request_handler.process_request_content(buffer.span_to_read());
-		buffer.consume_elements(parse_result.ptr - std::begin(buffer.span_to_read()));
+		buffer.consume_elements(parse_result.ptr - std::data(buffer.span_to_read()));
 		if(is_error_indicator(parse_result.ec))
 		{
 			return session_state_response{
@@ -44,7 +44,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 
 		if(m_content_length == 0)
 		{
-			auto const res = session.request_handler.finalize_state(read_request_body_tag{});
+			auto res = session.request_handler.finalize_state(read_request_body_tag{});
 			return session_state_response{
 				.status = is_client_error(res.http_status) ?
 					session_state_status::client_error_detected : session_state_status::completed,
@@ -55,7 +55,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 		else
 		{
 			auto span_to_write = buffer.span_to_write();
-			span_to_write = std::span{std::begin(span_to_write), std::max(BufferSize, m_content_length)};
+			span_to_write = std::span{std::begin(span_to_write), std::min(BufferSize, m_content_length)};
 			auto const read_result = session.connection.read(span_to_write);
 			m_content_length -= read_result.bytes_read;
 			buffer.reset_with_new_length(read_result.bytes_read);
