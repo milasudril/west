@@ -1,6 +1,6 @@
 //@	{"target":{"name":"http_read_request_header.test"}}
 
-#include "./http_session.hpp"
+#include "./http_read_request_header.hpp"
 
 #include <testfwk/testfwk.hpp>
 
@@ -91,7 +91,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
@@ -119,7 +119,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
@@ -145,7 +145,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
@@ -171,7 +171,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
@@ -197,7 +197,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
@@ -223,7 +223,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_parseerror_notruncation)
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
@@ -246,7 +246,7 @@ TESTCASE(west_http_read_request_header_read_noblocking_truncation)
 
 	request_handler handler{};
 
-	west::http::session_info session{};
+	west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
@@ -274,7 +274,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	request_handler handler{};
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 		EXPECT_EQ(res.http_status, west::http::status::ok);
@@ -285,7 +285,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	}
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 		EXPECT_EQ(res.http_status, west::http::status::ok);
@@ -296,7 +296,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	}
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 		EXPECT_EQ(res.http_status, west::http::status::ok);
@@ -307,7 +307,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	}
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 		EXPECT_EQ(res.http_status, west::http::status::ok);
@@ -318,7 +318,7 @@ TESTCASE(west_http_read_request_header_read_blocking)
 	}
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::completed);
 		EXPECT_EQ(res.http_status, west::http::status::accepted);
@@ -347,7 +347,7 @@ TESTCASE(west_http_read_request_header_read_io_error)
 	request_handler handler{};
 
 	{
-		west::http::session_info session{};
+		west::http::session session{};
 	auto res = reader(buffer_view, session, src, handler);
 		EXPECT_EQ(res.status, west::http::session_state_status::io_error);
 		EXPECT_EQ(res.http_status, west::http::status::internal_server_error);

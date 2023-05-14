@@ -12,7 +12,7 @@ namespace west::http
 	public:
 		template<io::data_sink Sink, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&,
-			session_info const&,
+			session const&,
  			Sink&,
 			RequestHandler&)
 		{
@@ -24,13 +24,13 @@ namespace west::http
 		}
 	};
 
-	enum class session_status{completed, more_data_needed, io_error};
+	enum class request_processor_status{completed, more_data_needed, io_error};
 
 	template<io::socket Socket, request_handler RequestHandler>
-	class session
+	class request_processor
 	{
 	public:
-		explicit session(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
+		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
 			m_connection{std::move(connection)},
 			m_request_handler{std::move(req_handler)}
 		{}
@@ -42,19 +42,19 @@ namespace west::http
 			while(true)
 			{
 				auto const res = std::visit([&buff_view, this](auto& state){
-					return state(buff_view, m_session_info, m_connection, m_request_handler);
+					return state(buff_view, m_session, m_connection, m_request_handler);
 				}, m_state);
 
 				switch(res.status)
 				{
 					case session_state_status::completed:
 					{
-						//m_state = initiate_next_state(m_state, m_session_info);
+						//m_state = initiate_next_state(m_state, m_session);
 						break;
 					}
 
 					case session_state_status::more_data_needed:
-						return session_status::more_data_needed;
+						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
 						// TODO: go to state for writing error report
@@ -63,22 +63,22 @@ namespace west::http
 						break;
 
 					case session_state_status::io_error:
-						return session_status::io_error;
+						return request_processor_status::io_error;
 				}
 			}
 		}
 
 		bool get_conn_keep_alive() const
-		{ return m_session_info.conn_keep_alive; }
+		{ return m_session.conn_keep_alive; }
 
 		size_t get_req_content_length() const
-		{ return m_session_info.req_content_length; }
+		{ return m_session.req_content_length; }
 
 	private:
 		Socket m_connection;
 		RequestHandler m_request_handler;
 		std::variant<read_request_header, write_error_response> m_state;
-		session_info m_session_info;
+		session m_session;
 	};
 }
 

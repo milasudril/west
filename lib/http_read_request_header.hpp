@@ -14,7 +14,7 @@ namespace west::http
 	public:
 		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
-			session_info& session,
+			session& session,
  			Source& source,
 			RequestHandler& req_handler);
 
@@ -26,7 +26,7 @@ namespace west::http
 template<west::io::data_source Source, west::http::request_handler RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_header::operator()(
 	io::buffer_view<char, BufferSize>& buffer,
-	session_info& session,
+	session& session,
 	Source& source,
 	RequestHandler& req_handler)
 {

@@ -1,6 +1,6 @@
-//@	{"target":{"name":"http_session.test"}}
+//@	{"target":{"name":"http_request_processor.test"}}
 
-#include "./http_session.hpp"
+#include "./http_request_processor.hpp"
 
 #include <testfwk/testfwk.hpp>
 #include <random>
@@ -74,7 +74,7 @@ namespace
 	};
 }
 
-TESTCASE(west_http_session_process_good_request)
+TESTCASE(west_http_request_processor_process_good_request)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
 "Host: localhost:8000\r\n"
@@ -111,12 +111,12 @@ TESTCASE(west_http_session_process_good_request)
 "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. "
 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim. "};
 
-	west::http::session session{data_source{serialized_header}, request_handler{}};
+	west::http::request_processor proc{data_source{serialized_header}, request_handler{}};
 
 	while(true)
 	{
-		auto const res = session.socket_is_ready();
-		if(res != west::http::session_status::more_data_needed)
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
 		{ break; }
 	}
 }
