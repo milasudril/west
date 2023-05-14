@@ -77,7 +77,7 @@ namespace
 	};
 }
 
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_noclose_nocontentlength)
+TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation)
 {
 	west::http::read_request_header reader;
 
@@ -93,107 +93,9 @@ TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation
 	EXPECT_EQ(res.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 0);
 	auto const remaining_data = buffer_view.span_to_read();
 	EXPECT_EQ((std::string_view{std::begin(remaining_data), std::end(remaining_data)}), "Some con");
 	EXPECT_EQ(std::string_view{session.connection.get_pointer()}, "tent after header");
-}
-
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_noclose_contentlength)
-{
-	west::http::read_request_header reader;
-
-	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
-
-	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
-	"content-length: 234\r\n"
-	"\r\n"
-	"Some content after header"}};
-
-	west::http::session session{src, request_handler{}, west::http::request_header{}};
-	auto res = reader(buffer_view, session);
-
-	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::accepted);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
-	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 234);
-	EXPECT_EQ(std::string_view{session.connection.get_pointer()}, "Some content after header");
-}
-
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_keepalive_nocontentlength)
-{
-	west::http::read_request_header reader;
-
-	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
-
-	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
-	"connection: keep-alive\r\n"
-	"\r\n"
-	"Some content after header"}};
-
-	west::http::session session{src, request_handler{}, west::http::request_header{}};
-	auto res = reader(buffer_view, session);
-
-	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::accepted);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
-	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 0);
-}
-
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_closestrangevalue_contentlength)
-{
-	west::http::read_request_header reader;
-
-	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
-
-	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
-	"connection: foobar\r\n"
-	"content-length: 123\r\n"
-	"\r\n"
-	"Some content after header"}};
-
-	west::http::session session{src, request_handler{}, west::http::request_header{}};
-	auto res = reader(buffer_view, session);
-
-	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::accepted);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
-	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 123);
-}
-
-TESTCASE(west_http_read_request_header_read_noblocking_noparseerror_notruncation_close_contentlength)
-{
-	west::http::read_request_header reader;
-
-	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
-
-	data_source src{std::string_view{"GET / HTTP/1.1\r\n"
-	"connection: close\r\n"
-	"content-length: 123\r\n"
-	"\r\n"
-	"Some content after header"}};
-
-
-	west::http::session session{src, request_handler{}, west::http::request_header{}};
-	auto res = reader(buffer_view, session);
-
-	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::accepted);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
-	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.conn_keep_alive, false);
-	EXPECT_EQ(session.req_content_length, 123);
 }
 
 TESTCASE(west_http_read_request_header_read_noblocking_parseerror_notruncation)
@@ -216,8 +118,6 @@ TESTCASE(west_http_read_request_header_read_noblocking_parseerror_notruncation)
 	EXPECT_EQ(res.http_status, west::http::status::bad_request);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"Wrong protocol"});
 	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 0);
 }
 
 TESTCASE(west_http_read_request_header_read_noblocking_truncation)
@@ -238,8 +138,6 @@ TESTCASE(west_http_read_request_header_read_noblocking_truncation)
 	EXPECT_EQ(res.http_status, west::http::status::bad_request);
 	EXPECT_EQ(res.error_message.get(), std::string_view{"More data needed"});
 	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-	EXPECT_EQ(session.conn_keep_alive, true);
-	EXPECT_EQ(session.req_content_length, 0);
 }
 
 TESTCASE(west_http_read_request_header_read_blocking)
@@ -264,8 +162,6 @@ TESTCASE(west_http_read_request_header_read_blocking)
 		EXPECT_EQ(res.http_status, west::http::status::ok);
 		EXPECT_EQ(res.error_message.get(), nullptr);
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-		EXPECT_EQ(session.conn_keep_alive, true);
-		EXPECT_EQ(session.req_content_length, 0);
 	}
 
 	{
@@ -274,8 +170,6 @@ TESTCASE(west_http_read_request_header_read_blocking)
 		EXPECT_EQ(res.http_status, west::http::status::ok);
 		EXPECT_EQ(res.error_message.get(), nullptr);
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-		EXPECT_EQ(session.conn_keep_alive, true);
-		EXPECT_EQ(session.req_content_length, 0);
 	}
 
 	{
@@ -284,8 +178,6 @@ TESTCASE(west_http_read_request_header_read_blocking)
 		EXPECT_EQ(res.http_status, west::http::status::ok);
 		EXPECT_EQ(res.error_message.get(), nullptr);
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-		EXPECT_EQ(session.conn_keep_alive, true);
-		EXPECT_EQ(session.req_content_length, 0);
 	}
 
 	{
@@ -294,8 +186,6 @@ TESTCASE(west_http_read_request_header_read_blocking)
 		EXPECT_EQ(res.http_status, west::http::status::ok);
 		EXPECT_EQ(res.error_message.get(), nullptr);
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-		EXPECT_EQ(session.conn_keep_alive, true);
-		EXPECT_EQ(session.req_content_length, 0);
 	}
 
 	{
@@ -304,8 +194,6 @@ TESTCASE(west_http_read_request_header_read_blocking)
 		EXPECT_EQ(res.http_status, west::http::status::accepted);
 		EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-		EXPECT_EQ(session.conn_keep_alive, false);
-		EXPECT_EQ(session.req_content_length, 123);
 	}
 }
 
@@ -331,7 +219,5 @@ TESTCASE(west_http_read_request_header_read_io_error)
 		EXPECT_EQ(res.http_status, west::http::status::internal_server_error);
 		EXPECT_EQ(res.error_message.get(),  std::string_view{"I/O error"});
 		EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{0, 0}));
-		EXPECT_EQ(session.conn_keep_alive, true);
-		EXPECT_EQ(session.req_content_length, 0);
 	}
 }

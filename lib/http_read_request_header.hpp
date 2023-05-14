@@ -35,24 +35,6 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 			case req_header_parser_error_code::completed:
 			{
 				auto header = m_req_header_parser.take_result();
-				if(auto content_length = header.fields.find("content-length");
-					 content_length != std::end(header.fields))
-				{
-					auto decoded_length =  to_number<size_t>(content_length->second);
-					if(!decoded_length.has_value())
-					{
-						return session_state_response{
-							.status = session_state_status::client_error_detected,
-							.http_status = status::bad_request,
-							.error_message = make_unique_cstr("Content-length field is in valid or outside range allowed range")
-						};
-					}
-					session.req_content_length = *decoded_length;
-				}
-
-				if(auto connection = header.fields.find("connection"); connection != std::end(header.fields))
-				{ session.conn_keep_alive = (connection->second != "close"); }
-
 				auto res = session.request_handler.validate_header(header);
 				session.request_header = std::move(header);
 				return session_state_response{

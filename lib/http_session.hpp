@@ -22,8 +22,6 @@ namespace west::http
 		Socket connection;
 		RequestHandler request_handler;
 		class request_header request_header;
-		size_t req_content_length{0};
-		bool conn_keep_alive{true};
 	};
 
 	struct session_state_response
