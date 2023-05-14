@@ -1,26 +1,10 @@
 #ifndef WEST_HTTP_REQUEST_PROCESSOR_HPP
 #define WEST_HTTP_REQUEST_PROCESSOR_HPP
 
-#include "./http_read_request_header.hpp"
-
-#include <variant>
+#include "./http_request_state_transitions.hpp"
 
 namespace west::http
 {
-	class write_error_response
-	{
-	public:
-		template<class T, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&, T const&)
-		{
-			return session_state_response{
-				.status = session_state_status::io_error,
-				.http_status = status::not_implemented,
-				.error_message = make_unique_cstr("Not implemented")
-			};
-		}
-	};
-
 	enum class request_processor_status{completed, more_data_needed, io_error};
 
 	template<io::socket Socket, request_handler RequestHandler>
