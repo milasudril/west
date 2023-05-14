@@ -1,5 +1,5 @@
-#ifndef WEST_HTTP_SESSION_STATE_HPP
-#define WEST_HTTP_SESSION_STATE_HPP
+#ifndef WEST_HTTP_SESSION_HPP
+#define WEST_HTTP_SESSION_HPP
 
 #include "./http_message_header.hpp"
 #include "./http_request_handler.hpp"

@@ -3,7 +3,7 @@
 
 #include "./io_interfaces.hpp"
 #include "./http_request_handler.hpp"
-#include "./http_session_state.hpp"
+#include "./http_session.hpp"
 #include "./http_request_header_parser.hpp"
 #include "./utils.hpp"
 

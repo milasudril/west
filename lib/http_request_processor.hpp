@@ -1,5 +1,5 @@
-#ifndef WEST_HTTP_SESSION_HPP
-#define WEST_HTTP_SESSION_HPP
+#ifndef WEST_HTTP_REQUEST_PROCESSOR_HPP
+#define WEST_HTTP_REQUEST_PROCESSOR_HPP
 
 #include "./http_read_request_header.hpp"
 
