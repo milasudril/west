@@ -61,16 +61,13 @@ namespace
 
 	struct request_handler
 	{
-		auto set_header(west::http::request_header&& header)
+		auto validate_header(west::http::request_header const&) const
 		{
-			this->header = std::move(header);
+			west::http::header_validation_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
-			return std::move(validation_result);
+			return validation_result;
 		}
-
-		west::http::header_validation_result validation_result;
-		west::http::request_header header;
 	};
 }
 

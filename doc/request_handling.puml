@@ -1,5 +1,5 @@
 @startuml
-west -> request_handler:set_request_header
+west -> request_handler:validate_header
 return
 loop while data available
 	west -> request_handler:write_request_body

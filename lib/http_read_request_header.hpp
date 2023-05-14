@@ -53,7 +53,8 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 				if(auto connection = header.fields.find("connection"); connection != std::end(header.fields))
 				{ session.conn_keep_alive = (connection->second != "close"); }
 
-				auto res = session.request_handler.set_header(std::move(header));
+				auto res = session.request_handler.validate_header(header);
+				session.request_header = std::move(header);
 				return session_state_response{
 					.status = is_client_error(res.http_status) ?
 						session_state_status::client_error_detected : session_state_status::completed,

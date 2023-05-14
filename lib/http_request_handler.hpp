@@ -14,9 +14,9 @@ namespace west::http
 	};
 
 	template<class T>
-	concept request_handler = requires(T x, request_header header)
+	concept request_handler = requires(T x, request_header const& header)
 	{
-		{x.set_header(std::move(header))} -> std::same_as<header_validation_result>;
+		{std::as_const(x).validate_header(header)} -> std::same_as<header_validation_result>;
 	};
 }
 
