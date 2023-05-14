@@ -121,6 +121,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 "Accept-Encoding: br\r\n"
 "DNT: 1\r\n"
 "Connection: keep-alive\r\n"
+"Content-Length: 400\t\n"
 "Upgrade-Insecure-Requests: 1\r\n"
 "Sec-Fetch-Dest: document\r\n"
 "Sec-Fetch-Mode: navigate\r\n"
@@ -131,18 +132,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 "sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
 "nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
 "Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
-"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis.\n"
-"\n"
-"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
-"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
-"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
-"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
-"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
-"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
-"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla "
-"eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. "
-"Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. "
-"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim. "};
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
 
 	west::http::request_processor proc{data_source{serialized_header}, request_handler{}};
 

@@ -29,7 +29,7 @@ namespace west::http
 				{
 					case session_state_status::completed:
 					{
-						//m_state = make_state_handler(m_state, m_session.request_header);
+						m_state = make_state_handler(m_state, m_session.request_header);
 						break;
 					}
 
@@ -56,7 +56,7 @@ namespace west::http
 
 	private:
 		session<Socket, RequestHandler> m_session;
-		std::variant<read_request_header, write_error_response> m_state;
+		request_state_holder m_state;
 	};
 }
 
