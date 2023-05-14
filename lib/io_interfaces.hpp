@@ -4,6 +4,8 @@
 #include <concepts>
 #include <span>
 
+#include <cassert>
+
 namespace west::io
 {
 	template<class T, size_t N>
@@ -20,7 +22,9 @@ namespace west::io
 			m_start{std::data(buffer)},
 			m_begin{std::data(buffer)},
 			m_end{std::data(buffer)}
-		{}
+		{
+			assert(m_begin != nullptr);
+		}
 
 		std::span<T> span_to_write() const
 		{ return std::span{m_start, m_start + N}; }
@@ -28,6 +32,7 @@ namespace west::io
 		void reset_with_new_length(size_t length)
 		{
 			m_begin = m_start;
+			assert(m_begin != nullptr);
 			m_end = m_start + length;
 		}
 
@@ -35,7 +40,10 @@ namespace west::io
 		{ return std::span{m_begin, m_end}; }
 
 		void consume_elements(size_t count)
-		{ m_begin += count; }
+		{
+			m_begin += count;
+			assert(m_begin != nullptr);
+		}
 
 	private:
 		T* m_start;

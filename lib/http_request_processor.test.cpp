@@ -100,9 +100,12 @@ namespace
 			return west::http::finalize_state_result{};
 		}
 
-		auto process_request_content(std::span<char const>) const
+		auto process_request_content(std::span<char const> buffer) const
 		{
-			return content_proc_result{};
+			return content_proc_result{
+				.ptr = std::data(buffer) + std::size(buffer),
+				.ec = test_result::ok
+			};
 		}
 	};
 }
@@ -121,7 +124,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 "Accept-Encoding: br\r\n"
 "DNT: 1\r\n"
 "Connection: keep-alive\r\n"
-"Content-Length: 400\t\n"
+"Content-Length: 400\r\n"
 "Upgrade-Insecure-Requests: 1\r\n"
 "Sec-Fetch-Dest: document\r\n"
 "Sec-Fetch-Mode: navigate\r\n"
