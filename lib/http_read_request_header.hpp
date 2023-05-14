@@ -5,7 +5,6 @@
 #include "./http_request_handler.hpp"
 #include "./http_session.hpp"
 #include "./http_request_header_parser.hpp"
-#include "./utils.hpp"
 
 namespace west::http
 {
