@@ -4,6 +4,7 @@
 #include "./io_interfaces.hpp"
 #include "./http_request_handler.hpp"
 #include "./http_session.hpp"
+#include "./utils.hpp"
 
 namespace west::http
 {
@@ -68,7 +69,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 					return session_state_response{
 						.status = session_state_status::client_error_detected,
 						.http_status = status::bad_request,
-						.error_message = make_unique_cstr("Client claims there is more data to read");
+						.error_message = make_unique_cstr("Client claims there is more data to read")
 					};
 
 				case io::operation_result::more_data_present:

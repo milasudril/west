@@ -8,6 +8,7 @@
 namespace west::http
 {
 	struct read_request_header_tag{};
+	struct read_request_body_tag{};
 
 	struct finalize_state_result
 	{
@@ -19,6 +20,8 @@ namespace west::http
 	concept request_handler = requires(T x, request_header const& header)
 	{
 		{x.finalize_state(read_request_header_tag{}, header)} -> std::same_as<finalize_state_result>;
+
+		{x.finalize_state(read_request_body_tag{})} -> std::same_as<finalize_state_result>;
 	};
 }
 

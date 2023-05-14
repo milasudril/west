@@ -68,6 +68,12 @@ namespace
 			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
 			return validation_result;
 		}
+
+		template<class T>
+		auto finalize_state(T) const
+		{
+			return west::http::finalize_state_result{};
+		}
 	};
 }
 
