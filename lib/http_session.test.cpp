@@ -17,16 +17,16 @@ namespace
 
 		auto read(std::span<char> output_buffer)
 		{
+			auto const remaining = std::size(m_buffer) - (m_ptr - std::begin(m_buffer));
+
 			std::bernoulli_distribution io_should_block{0.25};
-			if(io_should_block(m_rng))
+			if(remaining != 0 && io_should_block(m_rng))
 			{
 				return west::io::read_result{
 					.bytes_read = 0,
 					.ec = west::io::operation_result::operation_would_block
 				};
 			}
-
-			auto const remaining = std::size(m_buffer) - (m_ptr - std::begin(m_buffer));
 
 			auto bytes_to_read =std::min(std::min(std::size(output_buffer), remaining), static_cast<size_t>(13));
 			std::copy_n(m_ptr, remaining, std::begin(output_buffer));
@@ -47,7 +47,8 @@ namespace
 			};
 		}
 
-		void stop_reading() {}
+		void stop_reading()
+		{ m_ptr = std::end(m_buffer); }
 
 		char const* get_pointer() const { return m_ptr; }
 
