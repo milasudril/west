@@ -32,67 +32,63 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 	{
 		auto const parse_result = session.request_handler.process_request_content(buffer.span_to_read());
 		buffer.consume_elements(parse_result.ptr - std::begin(buffer.span_to_read()));
-		switch(parse_result.ec)
+		if(is_error_indicator(parse_result.ec))
 		{
-			case request_handler_error_code::completed:
+			return session_state_response{
+				.status = session_state_status::client_error_detected,
+				.http_status = status::bad_request,
+				.error_message = make_unique_cstr(to_string(parse_result.ec))
+			};
+		}
+
+		if(m_content_length == 0)
+		{
+			auto const res = session.request_handler.finalize_state(read_request_body_tag{});
+			return session_state_response{
+				.status = is_client_error(res.http_status) ?
+					session_state_status::client_error_detected : session_state_status::completed,
+				.http_status = res.http_status,
+				.error_message = std::move(res.error_message)
+			};
+		}
+		else
+		{
+			auto span_to_write = buffer.span_to_write();
+			span_to_write = std::span{std::begin(span_to_write), std::max(BufferSize, m_content_length)};
+			auto const read_result = session.connection.read(span_to_write);
+			m_content_length -= read_result.bytes_read;
+			buffer.reset_with_new_length(read_result.bytes_read);
+
+			switch(read_result.ec)
 			{
-				auto const res = session.request_handler.finalize_request_content_processing();
-				return session_state_response{
-					.status = is_client_error(res.http_status) ?
-						session_state_status::client_error_detected : session_state_status::completed,
-					.http_status = res.http_status,
-					.error_message = std::move(res.error_message)
-				};
+				case io::operation_result::completed:
+					// Since content length was not zero, we need more data
+					// We do not have any new data
+					// This is a client error
+					return session_state_response{
+						.status = session_state_status::client_error_detected,
+						.http_status = status::bad_request,
+						.error_message = make_unique_cstr("Client claims there is more data to read");
+					};
+
+				case io::operation_result::more_data_present:
+					break;
+
+				case io::operation_result::operation_would_block:
+					// Suspend operation until we are waken up again
+					return session_state_response{
+						.status = session_state_status::more_data_needed,
+						.http_status = status::ok,
+						.error_message = nullptr
+					};
+
+				case io::operation_result::error:
+					return session_state_response{
+						.status = session_state_status::io_error,
+						.http_status = status::internal_server_error,
+						.error_message = make_unique_cstr("I/O error")
+					};
 			}
-
-			case request_handler_error_code::more_data_needed:
-			{
-				auto span_to_write = buffer.span_to_write();
-				span_to_write = std::span{std::begin(span_to_write), std::max(BufferSize, m_content_length)};
-				auto const read_result = session.connection.read(span_to_write);
-				m_content_length -= read_result.bytes_read;
-				buffer.reset_with_new_length(read_result.bytes_read);
-
-				switch(read_result.ec)
-				{
-					case io::operation_result::completed:
-						// The parser needs more data
-						// We do not have any new data
-						// This is a client error
-						return session_state_response{
-							.status = session_state_status::client_error_detected,
-							.http_status = status::bad_request,
-							.error_message = make_unique_cstr(to_string(parse_result.ec))
-						};
-
-					case io::operation_result::more_data_present:
-						break;
-
-					case io::operation_result::operation_would_block:
-						// Suspend operation until we are waken up again
-						return session_state_response{
-							.status = session_state_status::more_data_needed,
-							.http_status = status::ok,
-							.error_message = nullptr
-						};
-
-					case io::operation_result::error:
-						return session_state_response{
-							.status = session_state_status::io_error,
-							.http_status = status::internal_server_error,
-							.error_message = make_unique_cstr("I/O error")
-						};
-				}
-
-				break;
-			}
-
-			default:
-				return session_state_response{
-					.status = session_state_status::client_error_detected,
-					.http_status = status::bad_request,
-					.error_message = make_unique_cstr(to_string(parse_result.ec))
-				};
 		}
 	}
 }
