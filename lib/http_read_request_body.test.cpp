@@ -145,3 +145,72 @@ TESTCASE(http_read_request_body_read_all_data)
 		}
 	}
 }
+
+TESTCASE(http_read_request_body_read_early_eof)
+{
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
+"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
+"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
+"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
+"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
+"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
+"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
+"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
+"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
+"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
+"enim."}};
+
+	west::http::session session{src, request_handler<test_result::ok>{}, west::http::request_header{}};
+	west::http::read_request_body reader{4*src.get_data().size()};
+
+	while(true)
+	{
+		auto res = reader(buffer_view, session);
+		if(res.status != west::http::session_state_status::more_data_needed)
+		{
+			EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
+			EXPECT_EQ(res.http_status, west::http::status::bad_request);
+			EXPECT_EQ(res.error_message.get(), std::string_view{"Client claims there is more data to read"});
+			EXPECT_EQ(session.request_handler.data_processed, src.get_data());
+			break;
+		}
+	}
+}
+
+
+TESTCASE(http_read_request_body_read_request_handler_rejects)
+{
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
+"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
+"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
+"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
+"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
+"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
+"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
+"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
+"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
+"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
+"enim."}};
+
+	west::http::session session{src, request_handler<test_result::failure>{}, west::http::request_header{}};
+	west::http::read_request_body reader{src.get_data().size()};
+
+	while(true)
+	{
+		auto res = reader(buffer_view, session);
+		if(res.status != west::http::session_state_status::more_data_needed)
+		{
+			EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
+			EXPECT_EQ(res.http_status, west::http::status::bad_request);
+			EXPECT_EQ(res.error_message.get(), std::string_view{"Failure"});
+			EXPECT_EQ(session.request_handler.data_processed, "");
+			break;
+		}
+	}
+}
