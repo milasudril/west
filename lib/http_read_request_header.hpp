@@ -12,14 +12,14 @@ namespace west::http
 	class read_request_header
 	{
 	public:
-		read_request_header():m_keep_alive{false}{}
+		read_request_header():m_content_length{0}, m_keep_alive{true}{}
 
 		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
  			Source& source,
 			RequestHandler& req_handler);
 
-		std::optional<size_t> get_content_length() const
+		size_t get_content_length() const
 		{ return m_content_length; }
 
 		bool get_keep_alive() const
@@ -27,7 +27,7 @@ namespace west::http
 
 	private:
 		request_header_parser m_req_header_parser;
-		std::optional<size_t> m_content_length;
+		size_t m_content_length;
 		bool m_keep_alive;
 	};
 }
@@ -49,10 +49,21 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 				auto header = m_req_header_parser.take_result();
 				if(auto content_length = header.fields.find("content-length");
 					 content_length != std::end(header.fields))
-				{ m_content_length = to_number<size_t>(content_length->second); }
+				{
+					auto decoded_length =  to_number<size_t>(content_length->second);
+					if(!decoded_length.has_value())
+					{
+						return session_state_response{
+							.status = session_state_status::client_error_detected,
+							.http_status = status::bad_request,
+							.error_message = make_unique_cstr("Content-length field is in valid or outside range allowed range")
+						};
+					}
+					m_content_length = *decoded_length;
+				}
 
 				if(auto connection = header.fields.find("connection"); connection != std::end(header.fields))
-				{ m_keep_alive = (connection->second == "keep-alive" && m_content_length.has_value()); }
+				{ m_keep_alive = (connection->second != "close"); }
 
 				auto res = req_handler.set_header(std::move(header));
 				return session_state_response{
