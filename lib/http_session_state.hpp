@@ -2,6 +2,7 @@
 #define WEST_HTTP_SESSION_STATE_HPP
 
 #include "./http_message_header.hpp"
+#include "./http_request_handler.hpp"
 
 #include <memory>
 
@@ -15,8 +16,11 @@ namespace west::http
 		io_error
 	};
 
+	template<class Socket, class RequestHandler>
 	struct session
 	{
+		Socket connection;
+		RequestHandler request_handler;
 		size_t req_content_length{0};
 		bool conn_keep_alive{true};
 	};

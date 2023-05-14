@@ -10,11 +10,8 @@ namespace west::http
 	class write_error_response
 	{
 	public:
-		template<io::data_sink Sink, request_handler RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&,
-			session const&,
- 			Sink&,
-			RequestHandler&)
+		template<class T, size_t BufferSize>
+		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&, T const&)
 		{
 			return session_state_response{
 				.status = session_state_status::io_error,
@@ -31,8 +28,7 @@ namespace west::http
 	{
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
-			m_connection{std::move(connection)},
-			m_request_handler{std::move(req_handler)}
+			m_session{std::move(connection), std::move(req_handler)}
 		{}
 
 		auto socket_is_ready()
@@ -42,7 +38,7 @@ namespace west::http
 			while(true)
 			{
 				auto const res = std::visit([&buff_view, this](auto& state){
-					return state(buff_view, m_session, m_connection, m_request_handler);
+					return state(buff_view, m_session);
 				}, m_state);
 
 				switch(res.status)
@@ -58,7 +54,7 @@ namespace west::http
 
 					case session_state_status::client_error_detected:
 						// TODO: go to state for writing error report
-						m_connection.stop_reading();
+						m_session.connection.stop_reading();
 						m_state = write_error_response{};
 						break;
 
@@ -75,10 +71,8 @@ namespace west::http
 		{ return m_session.req_content_length; }
 
 	private:
-		Socket m_connection;
-		RequestHandler m_request_handler;
+		session<Socket, RequestHandler> m_session;
 		std::variant<read_request_header, write_error_response> m_state;
-		session m_session;
 	};
 }
 

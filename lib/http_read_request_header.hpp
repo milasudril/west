@@ -14,9 +14,7 @@ namespace west::http
 	public:
 		template<io::data_source Source, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
-			session& session,
- 			Source& source,
-			RequestHandler& req_handler);
+			session<Source, RequestHandler>& session);
 
 	private:
 		request_header_parser m_req_header_parser;
@@ -26,9 +24,7 @@ namespace west::http
 template<west::io::data_source Source, west::http::request_handler RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_header::operator()(
 	io::buffer_view<char, BufferSize>& buffer,
-	session& session,
-	Source& source,
-	RequestHandler& req_handler)
+	session<Source, RequestHandler>& session)
 {
 	while(true)
 	{
@@ -57,7 +53,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 				if(auto connection = header.fields.find("connection"); connection != std::end(header.fields))
 				{ session.conn_keep_alive = (connection->second != "close"); }
 
-				auto res = req_handler.set_header(std::move(header));
+				auto res = session.request_handler.set_header(std::move(header));
 				return session_state_response{
 					.status = is_client_error(res.http_status) ?
 						session_state_status::client_error_detected : session_state_status::completed,
@@ -68,7 +64,7 @@ template<west::io::data_source Source, west::http::request_handler RequestHandle
 
 			case req_header_parser_error_code::more_data_needed:
 			{
-				auto const read_result = source.read(buffer.span_to_write());
+				auto const read_result = session.connection.read(buffer.span_to_write());
 				buffer.reset_with_new_length(read_result.bytes_read);
 
 				switch(read_result.ec)
