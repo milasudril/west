@@ -7,7 +7,9 @@
 
 namespace west::http
 {
-	struct header_validation_result
+	struct read_request_header_tag{};
+
+	struct finalize_state_result
 	{
 		status http_status{status::ok};
 		std::unique_ptr<char[]> error_message;
@@ -16,7 +18,7 @@ namespace west::http
 	template<class T>
 	concept request_handler = requires(T x, request_header const& header)
 	{
-		{std::as_const(x).validate_header(header)} -> std::same_as<header_validation_result>;
+		{x.finalize_state(read_request_header_tag{}, header)} -> std::same_as<finalize_state_result>;
 	};
 }
 

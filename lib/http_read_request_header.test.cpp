@@ -67,9 +67,9 @@ namespace
 
 	struct request_handler
 	{
-		auto validate_header(west::http::request_header const&) const
+		auto finalize_state(west::http::read_request_header_tag, west::http::request_header const&) const
 		{
-			west::http::header_validation_result validation_result;
+			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::accepted;
 			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
 			return validation_result;
