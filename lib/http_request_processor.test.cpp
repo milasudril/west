@@ -59,6 +59,31 @@ namespace
 		std::minstd_rand m_rng;
 	};
 
+	enum class test_result{ok, failure};
+
+	constexpr bool is_error_indicator(test_result res)
+	{
+		return res != test_result::ok;
+	}
+
+	constexpr char const* to_string(test_result res)
+	{
+		switch(res)
+		{
+			case test_result::ok:
+				return "Ok";
+			case test_result::failure:
+				return "Failure";
+		}
+		__builtin_unreachable();
+	}
+
+	struct content_proc_result
+	{
+		char const* ptr;
+		test_result ec;
+	};
+
 	struct request_handler
 	{
 		auto finalize_state(west::http::read_request_header_tag, west::http::request_header const&) const
@@ -76,7 +101,9 @@ namespace
 		}
 
 		auto process_request_content(std::span<char const>) const
-		{}
+		{
+			return content_proc_result{};
+		}
 	};
 }
 

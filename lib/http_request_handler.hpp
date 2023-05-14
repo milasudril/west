@@ -17,13 +17,27 @@ namespace west::http
 	};
 
 	template<class T>
+	concept error_code = requires(T x)
+	{
+		{to_string(x)} -> std::convertible_to<char const*>;
+		{is_error_indicator(x)} -> std::same_as<bool>;
+	};
+
+	template<class T>
+	concept process_request_content_result = requires(T x)
+	{
+		{x.ptr} -> std::convertible_to<char const*>;
+		{x.ec} -> error_code;
+	};
+
+	template<class T>
 	concept request_handler = requires(T x, request_header const& header, std::span<char const> buffer)
 	{
 		{x.finalize_state(read_request_header_tag{}, header)} -> std::same_as<finalize_state_result>;
 
 		{x.finalize_state(read_request_body_tag{})} -> std::same_as<finalize_state_result>;
 
-		{x.process_request_content(buffer)};
+		{x.process_request_content(buffer)} -> process_request_content_result;
 	};
 }
 
