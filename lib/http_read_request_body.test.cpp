@@ -12,11 +12,20 @@ namespace
 	public:
 		explicit data_source(std::string_view buffer):
 			m_buffer{buffer},
-			m_ptr{std::begin(buffer)}
+			m_ptr{std::begin(buffer)},
+			m_io_error{false}
 		{}
 
 		auto read(std::span<char> output_buffer)
 		{
+			if(m_io_error)
+			{
+				return west::io::read_result{
+					.bytes_read = 0,
+					.ec = west::io::operation_result::error
+				};
+			}
+
 			auto const remaining = std::size(m_buffer) - (m_ptr - std::begin(m_buffer));
 
 			std::bernoulli_distribution io_should_block{0.25};
@@ -54,10 +63,13 @@ namespace
 
 		auto get_data() const { return m_buffer; }
 
+		void enable_io_error() { m_io_error = true; }
+
 	private:
 		std::string_view m_buffer;
 		char const* m_ptr;
 		std::minstd_rand m_rng;
+		bool m_io_error;
 	};
 
 	enum class test_result{ok, failure};
@@ -212,5 +224,43 @@ TESTCASE(http_read_request_body_read_request_handler_rejects)
 			EXPECT_EQ(session.request_handler.data_processed, "");
 			break;
 		}
+	}
+}
+
+TESTCASE(http_read_request_body_io_error)
+{
+	std::array<char, 4096> buffer{};
+	west::io::buffer_view buffer_view{buffer};
+
+	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
+"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
+"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
+"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
+"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
+"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
+"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
+"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
+"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
+"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
+"enim."}};
+
+	west::http::session session{src, request_handler<test_result::ok>{}, west::http::request_header{}};
+	west::http::read_request_body reader{src.get_data().size()};
+	size_t k = 0;
+	while(true)
+	{
+		if(k == 4)
+		{ session.connection.enable_io_error(); }
+
+		auto res = reader(buffer_view, session);
+		if(res.status != west::http::session_state_status::more_data_needed)
+		{
+			EXPECT_EQ(res.status, west::http::session_state_status::io_error);
+			EXPECT_EQ(res.http_status, west::http::status::internal_server_error);
+			EXPECT_EQ(res.error_message.get(), std::string_view{"I/O error"});
+			break;
+		}
+
+		++k;
 	}
 }
