@@ -12,6 +12,7 @@ namespace west::http
 	public:
 		template<io::data_sink Sink, request_handler RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&,
+			session_info const&,
  			Sink&,
 			RequestHandler&)
 		{
@@ -41,18 +42,13 @@ namespace west::http
 			while(true)
 			{
 				auto const res = std::visit([&buff_view, this](auto& state){
-					return state(buff_view, m_connection, m_request_handler);
+					return state(buff_view, m_session_info, m_connection, m_request_handler);
 				}, m_state);
 
 				switch(res.status)
 				{
 					case session_state_status::completed:
 					{
-						if(auto state = std::get_if<read_request_header>(&m_state); state != nullptr)
-						{
-							m_session_info.req_content_length = state->get_content_length();
-							m_session_info.conn_keep_alive = state->get_keep_alive();
-						}
 						//m_state = initiate_next_state(m_state, m_session_info);
 						break;
 					}
