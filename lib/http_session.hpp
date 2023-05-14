@@ -31,9 +31,7 @@ namespace west::http
 	public:
 		explicit session(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
 			m_connection{std::move(connection)},
-			m_request_handler{std::move(req_handler)},
-			m_req_content_length{0},
-			m_conn_keep_alive{true}
+			m_request_handler{std::move(req_handler)}
 		{}
 
 		auto socket_is_ready()
@@ -52,10 +50,10 @@ namespace west::http
 					{
 						if(auto state = std::get_if<read_request_header>(&m_state); state != nullptr)
 						{
-							m_req_content_length = state->get_content_length();
-							m_conn_keep_alive = state->get_keep_alive();
+							m_session_info.req_content_length = state->get_content_length();
+							m_session_info.conn_keep_alive = state->get_keep_alive();
 						}
-
+						//m_state = initiate_next_state(m_state, m_session_info);
 						break;
 					}
 
@@ -75,17 +73,16 @@ namespace west::http
 		}
 
 		bool get_conn_keep_alive() const
-		{ return m_conn_keep_alive; }
+		{ return m_session_info.conn_keep_alive; }
 
 		size_t get_req_content_length() const
-		{ return m_req_content_length; }
+		{ return m_session_info.req_content_length; }
 
 	private:
 		Socket m_connection;
 		RequestHandler m_request_handler;
 		std::variant<read_request_header, write_error_response> m_state;
-		size_t m_req_content_length;
-		bool m_conn_keep_alive;
+		session_info m_session_info;
 	};
 }
 

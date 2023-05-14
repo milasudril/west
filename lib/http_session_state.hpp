@@ -15,6 +15,12 @@ namespace west::http
 		io_error
 	};
 
+	struct session_info
+	{
+		size_t req_content_length{0};
+		bool conn_keep_alive{true};
+	};
+
 	struct session_state_response
 	{
 		session_state_status status;
