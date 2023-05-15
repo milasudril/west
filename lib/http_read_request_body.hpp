@@ -44,6 +44,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 
 		if(m_content_length == 0)
 		{
+			printf("request body processed (%zu)\n", std::size(buffer.span_to_read()));
+			fflush(stdout);
 			auto res = session.request_handler.finalize_state(read_request_body_tag{});
 			return session_state_response{
 				.status = is_client_error(res.http_status) ?
@@ -58,11 +60,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			span_to_write = std::span{std::begin(span_to_write), std::min(BufferSize, m_content_length)};
 			auto const read_result = session.connection.read(span_to_write);
 			m_content_length -= read_result.bytes_read;
+			printf("Read %zu %zu\n", read_result.bytes_read, m_content_length);
+			fflush(stdout);
 			buffer.reset_with_new_length(read_result.bytes_read);
 
 			switch(read_result.ec)
 			{
 				case io::operation_result::completed:
+					puts("EOF");
 					// Since content length was not zero, we need more data
 					// We do not have any new data
 					// This is a client error
@@ -76,6 +81,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					break;
 
 				case io::operation_result::operation_would_block:
+					puts("Would block");
 					// Suspend operation until we are waken up again
 					return session_state_response{
 						.status = session_state_status::more_data_needed,

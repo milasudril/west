@@ -30,6 +30,13 @@ namespace west::http
 					case session_state_status::completed:
 					{
 						m_state = make_state_handler(m_state, m_session.request_header);
+						if(m_state.index() == 0 && std::size(buff_view.span_to_read()) == 0)
+						{
+							auto const read_result = m_session.connection.read(buff_view.span_to_write());
+							if(read_result.bytes_read == 0 && read_result.ec != io::operation_result::operation_would_block)
+							{ return request_processor_status::completed; }
+							buff_view.reset_with_new_length(read_result.bytes_read);
+						}
 						break;
 					}
 
@@ -37,6 +44,7 @@ namespace west::http
 						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
+						puts("****Client error detected****");
 						// TODO: go to state for writing error report
 						m_session.connection.stop_reading();
 						m_state = write_error_response{};
@@ -53,6 +61,9 @@ namespace west::http
 
 		size_t get_req_content_length() const
 		{ return m_session.req_content_length; }
+
+		auto const& get_request_handler() const
+		{ return m_session.request_handler; }
 
 	private:
 		session<Socket, RequestHandler> m_session;

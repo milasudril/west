@@ -100,15 +100,21 @@ namespace
 			return west::http::finalize_state_result{};
 		}
 
-		auto process_request_content(std::span<char const> buffer) const
+		auto process_request_content(std::span<char const> buffer)
 		{
+			request_body.insert(std::end(request_body), std::begin(buffer), std::end(buffer));
 			return content_proc_result{
 				.ptr = std::data(buffer) + std::size(buffer),
 				.ec = test_result::ok
 			};
 		}
+
+		std::string request_body;
 	};
 }
+
+template<size_t N>
+struct foo{};
 
 TESTCASE(west_http_request_processor_process_good_request)
 {
@@ -124,7 +130,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 "Accept-Encoding: br\r\n"
 "DNT: 1\r\n"
 "Connection: keep-alive\r\n"
-"Content-Length: 400\r\n"
+"Content-Length: 463\r\n"
 "Upgrade-Insecure-Requests: 1\r\n"
 "Sec-Fetch-Dest: document\r\n"
 "Sec-Fetch-Mode: navigate\r\n"
@@ -143,6 +149,10 @@ TESTCASE(west_http_request_processor_process_good_request)
 	{
 		auto const res = proc.socket_is_ready();
 		if(res != west::http::request_processor_status::more_data_needed)
-		{ break; }
+		{
+			printf("(%s)\n", proc.get_request_handler().request_body.c_str());
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			break;
+		}
 	}
 }
