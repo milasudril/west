@@ -3,6 +3,7 @@
 
 #include "./http_read_request_header.hpp"
 #include "./http_read_request_body.hpp"
+#include "./http_wait_for_data.hpp"
 
 #include <variant>
 
@@ -23,8 +24,10 @@ namespace west::http
 		}
 	};
 
-
-	using request_state_holder = std::variant<read_request_header, read_request_body, write_error_response>;
+	using request_state_holder = std::variant<read_request_header,
+		read_request_body,
+		wait_for_data,
+		write_error_response>;
 
 	template<class T>
 	struct next_request_state{};
@@ -38,26 +41,34 @@ namespace west::http
 	{ using state_handler = read_request_header; };
 
 	template<>
+	struct next_request_state<wait_for_data>
+	{ using state_handler = read_request_header; };
+
+	template<>
 	struct next_request_state<write_error_response>
 	{ using state_handler = read_request_header; };
 
 
 
 	template<class T>
-	inline auto make_state_handler(request_header const&);
+	inline auto make_state_handler(request_header const&, size_t);
 
 	template<>
-	inline auto make_state_handler<read_request_header>(request_header const&)
-	{ return read_request_header{}; }
+	inline auto make_state_handler<read_request_header>(request_header const&, size_t current_buffer_size)
+	{
+		if(current_buffer_size == 0)
+		{ return request_state_holder{wait_for_data{}}; }
+		return request_state_holder{read_request_header{}};
+	}
 
 	template<>
-	inline auto make_state_handler<write_error_response>(request_header const&)
+	inline auto make_state_handler<write_error_response>(request_header const&, size_t)
 	{ return write_error_response{}; }
 
 
 
 	template<>
-	inline auto make_state_handler<read_request_body>(request_header const& req_header)
+	inline auto make_state_handler<read_request_body>(request_header const& req_header, size_t)
 	{
 		auto i = req_header.fields.find("Content-Length");
 		if(i == std::end(req_header.fields))
@@ -70,11 +81,13 @@ namespace west::http
 		return request_state_holder{read_request_body{*length_conv}};
 	}
 
-	inline auto make_state_handler(request_state_holder const& initial_state, request_header const& req_header)
+	inline auto make_state_handler(request_state_holder const& initial_state,
+		request_header const& req_header,
+		size_t current_buffer_size)
 	{
-		return std::visit([&req_header]<class T>(T const&) {
+		return std::visit([&req_header, current_buffer_size]<class T>(T const&) {
 			using next_state_handler = next_request_state<T>::state_handler;
-			return request_state_holder{make_state_handler<next_state_handler>(req_header)};
+			return request_state_holder{make_state_handler<next_state_handler>(req_header, current_buffer_size)};
 		}, initial_state);
 	}
 }

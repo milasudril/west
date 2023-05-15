@@ -28,17 +28,11 @@ namespace west::http
 				switch(res.status)
 				{
 					case session_state_status::completed:
-					{
-						m_state = make_state_handler(m_state, m_session.request_header);
-						if(m_state.index() == 0 && std::size(buff_view.span_to_read()) == 0)
-						{
-							auto const read_result = m_session.connection.read(buff_view.span_to_write());
-							if(read_result.bytes_read == 0 && read_result.ec != io::operation_result::operation_would_block)
-							{ return request_processor_status::completed; }
-							buff_view.reset_with_new_length(read_result.bytes_read);
-						}
+						m_state = make_state_handler(m_state, m_session.request_header, std::size(buff_view.span_to_read()));
 						break;
-					}
+
+					case session_state_status::connection_closed_as_expected:
+						return request_processor_status::completed;
 
 					case session_state_status::more_data_needed:
 						return request_processor_status::more_data_needed;
