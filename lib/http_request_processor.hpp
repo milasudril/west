@@ -38,7 +38,7 @@ namespace west::http
 						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
-						puts("****Client error detected****");
+						printf("Error: %s (state %zu)\n", res.error_message.get(), m_state.index());
 						// TODO: go to state for writing error report
 						m_session.connection.stop_reading();
 						m_state = write_error_response{};

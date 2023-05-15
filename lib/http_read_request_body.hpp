@@ -29,10 +29,15 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io::buffer_view<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-	while(true)
+	while(m_content_length != 0)
 	{
-		auto const parse_result = session.request_handler.process_request_content(buffer.span_to_read());
-		buffer.consume_elements(parse_result.ptr - std::data(buffer.span_to_read()));
+		auto span_to_read = buffer.span_to_read();
+		span_to_read = std::span{std::begin(span_to_read), std::min(std::size(span_to_read), m_content_length)};
+		auto const parse_result = session.request_handler.process_request_content(span_to_read);
+		auto const bytes_consumed = parse_result.ptr - std::data(span_to_read);
+		buffer.consume_elements(bytes_consumed);
+		m_content_length -= bytes_consumed;
+
 		if(is_error_indicator(parse_result.ec))
 		{
 			return session_state_response{
@@ -42,32 +47,16 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			};
 		}
 
-		if(m_content_length == 0)
-		{
-			printf("request body processed (%zu)\n", std::size(buffer.span_to_read()));
-			fflush(stdout);
-			auto res = session.request_handler.finalize_state(read_request_body_tag{});
-			return session_state_response{
-				.status = is_client_error(res.http_status) ?
-					session_state_status::client_error_detected : session_state_status::completed,
-				.http_status = res.http_status,
-				.error_message = std::move(res.error_message)
-			};
-		}
-		else
+		if(std::size(buffer.span_to_read()) == 0 && m_content_length != 0)
 		{
 			auto span_to_write = buffer.span_to_write();
 			span_to_write = std::span{std::begin(span_to_write), std::min(BufferSize, m_content_length)};
 			auto const read_result = session.connection.read(span_to_write);
-			m_content_length -= read_result.bytes_read;
-			printf("Read %zu %zu\n", read_result.bytes_read, m_content_length);
-			fflush(stdout);
 			buffer.reset_with_new_length(read_result.bytes_read);
 
 			switch(read_result.ec)
 			{
 				case io::operation_result::completed:
-					puts("EOF");
 					// Since content length was not zero, we need more data
 					// We do not have any new data
 					// This is a client error
@@ -81,7 +70,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					break;
 
 				case io::operation_result::operation_would_block:
-					puts("Would block");
 					// Suspend operation until we are waken up again
 					return session_state_response{
 						.status = session_state_status::more_data_needed,
@@ -98,6 +86,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			}
 		}
 	}
+
+	auto res = session.request_handler.finalize_state(read_request_body_tag{});
+	return session_state_response{
+		.status = is_client_error(res.http_status) ?
+			session_state_status::client_error_detected : session_state_status::completed,
+		.http_status = res.http_status,
+		.error_message = std::move(res.error_message)
+	};
 }
 
 #endif
