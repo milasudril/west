@@ -7,9 +7,6 @@
 
 namespace west::http
 {
-	struct read_request_header_tag{};
-	struct read_request_body_tag{};
-
 	struct finalize_state_result
 	{
 		status http_status{status::ok};
@@ -31,13 +28,16 @@ namespace west::http
 	};
 
 	template<class T>
-	concept request_handler = requires(T x, request_header const& header, std::span<char const> buffer)
+	concept request_handler = requires(T x,
+		request_header const& req_header,
+		std::span<char const> buffer,
+		response_header& resp_header)
 	{
-		{x.finalize_state(read_request_header_tag{}, header)} -> std::same_as<finalize_state_result>;
-
-		{x.finalize_state(read_request_body_tag{})} -> std::same_as<finalize_state_result>;
+		{x.finalize_state(req_header)} -> std::same_as<finalize_state_result>;
 
 		{x.process_request_content(buffer)} -> process_request_content_result;
+
+		{x.finalize_state(resp_header)} -> std::same_as<finalize_state_result>;
 	};
 }
 

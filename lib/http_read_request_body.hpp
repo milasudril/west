@@ -87,7 +87,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		}
 	}
 
-	auto res = session.request_handler.finalize_state(read_request_body_tag{});
+	auto res = session.request_handler.finalize_state(session.response_header);
 	return session_state_response{
 		.status = is_client_error(res.http_status) ?
 			session_state_status::client_error_detected : session_state_status::completed,

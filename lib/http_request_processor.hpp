@@ -12,7 +12,7 @@ namespace west::http
 	{
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
-			m_session{std::move(connection), std::move(req_handler), request_header{}}
+			m_session{std::move(connection), std::move(req_handler), request_header{}, response_header{}}
 		{}
 
 		auto socket_is_ready()

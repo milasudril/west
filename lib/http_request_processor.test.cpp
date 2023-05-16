@@ -86,7 +86,7 @@ namespace
 
 	struct request_handler
 	{
-		auto finalize_state(west::http::read_request_header_tag, west::http::request_header const&) const
+		auto finalize_state(west::http::request_header const&) const
 		{
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;

@@ -34,7 +34,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			case req_header_parser_error_code::completed:
 			{
 				auto header = m_req_header_parser.take_result();
-				auto res = session.request_handler.finalize_state(read_request_header_tag{}, header);
+				// TODO: Check that client speaks HTTP/1.1
+				auto res = session.request_handler.finalize_state(header);
 				session.request_header = std::move(header);
 				return session_state_response{
 					.status = is_client_error(res.http_status) ?

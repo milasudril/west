@@ -23,6 +23,7 @@ namespace west::http
 		Socket connection;
 		RequestHandler request_handler;
 		class request_header request_header;
+		class response_header response_header;
 	};
 
 	struct session_state_response
