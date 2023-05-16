@@ -31,13 +31,13 @@ namespace west::http
 	concept request_handler = requires(T x,
 		request_header const& req_header,
 		std::span<char const> buffer,
-		response_header& resp_header)
+		field_map& response_fields)
 	{
 		{x.finalize_state(req_header)} -> std::same_as<finalize_state_result>;
 
 		{x.process_request_content(buffer)} -> process_request_content_result;
 
-		{x.finalize_state(resp_header)} -> std::same_as<finalize_state_result>;
+		{x.finalize_state(response_fields)} -> std::same_as<finalize_state_result>;
 	};
 }
 
