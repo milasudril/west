@@ -34,7 +34,15 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			case req_header_parser_error_code::completed:
 			{
 				auto header = m_req_header_parser.take_result();
-				// TODO: Check that client speaks HTTP/1.1
+				if(header.request_line.http_version != version{1, 1})
+				{
+					return session_state_response{
+						.status = session_state_status::client_error_detected,
+						.http_status = status::http_version_not_supported,
+						.error_message = make_unique_cstr("Server only supports HTTP version 1.1")
+					};
+				}
+
 				auto res = session.request_handler.finalize_state(header);
 				session.request_header = std::move(header);
 				return session_state_response{
