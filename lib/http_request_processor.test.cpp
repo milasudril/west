@@ -84,6 +84,12 @@ namespace
 		test_result ec;
 	};
 
+	struct content_read_result
+	{
+		char* ptr;
+		test_result ec;
+	};
+
 	struct request_handler
 	{
 		auto finalize_state(west::http::request_header const&) const
@@ -107,6 +113,11 @@ namespace
 				.ptr = std::data(buffer) + std::size(buffer),
 				.ec = test_result::ok
 			};
+		}
+
+		auto read_response_content(std::span<char>)
+		{
+			return content_read_result{};
 		}
 
 		std::string request_body;
