@@ -87,7 +87,11 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		}
 	}
 
+	session.response_header.status_line.http_version = version{1, 1};
 	auto res = session.request_handler.finalize_state(session.response_header);
+	session.response_header.status_line.status_code = res.http_status;
+	session.response_header.status_line.reason_phrase = to_string(res.http_status);
+
 	return session_state_response{
 		.status = is_client_error(res.http_status) ?
 			session_state_status::client_error_detected : session_state_status::completed,
