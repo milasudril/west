@@ -3,6 +3,7 @@
 
 #include "./http_read_request_header.hpp"
 #include "./http_read_request_body.hpp"
+#include "./http_write_response_header.hpp"
 #include "./http_wait_for_data.hpp"
 
 #include <variant>
@@ -26,6 +27,7 @@ namespace west::http
 
 	using request_state_holder = std::variant<read_request_header,
 		read_request_body,
+		write_response_header,
 		wait_for_data,
 		write_error_response>;
 
@@ -38,6 +40,10 @@ namespace west::http
 
 	template<>
 	struct next_request_state<read_request_body>
+	{ using state_handler = write_response_header; };
+
+	template<>
+	struct next_request_state<write_response_header>
 	{ using state_handler = read_request_header; };
 
 	template<>
@@ -51,10 +57,12 @@ namespace west::http
 
 
 	template<class T>
-	inline auto make_state_handler(request_header const&, size_t);
+	inline auto make_state_handler(request_header const&, size_t, response_header const&);
 
 	template<>
-	inline auto make_state_handler<read_request_header>(request_header const&, size_t current_buffer_size)
+	inline auto make_state_handler<read_request_header>(request_header const&,
+		size_t current_buffer_size,
+		response_header const&)
 	{
 		if(current_buffer_size == 0)
 		{ return request_state_holder{wait_for_data{}}; }
@@ -62,13 +70,23 @@ namespace west::http
 	}
 
 	template<>
-	inline auto make_state_handler<write_error_response>(request_header const&, size_t)
-	{ return write_error_response{}; }
-
-
+	inline auto make_state_handler<write_response_header>(request_header const&,
+		size_t,
+		response_header const& resp_header)
+	{
+		return write_response_header{resp_header};
+	}
 
 	template<>
-	inline auto make_state_handler<read_request_body>(request_header const& req_header, size_t)
+	inline auto make_state_handler<write_error_response>(request_header const&,
+		size_t,
+		response_header const&)
+	{ return write_error_response{}; }
+
+	template<>
+	inline auto make_state_handler<read_request_body>(request_header const& req_header,
+		size_t,
+		response_header const&)
 	{
 		auto i = req_header.fields.find("Content-Length");
 		if(i == std::end(req_header.fields))
@@ -83,11 +101,14 @@ namespace west::http
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
 		request_header const& req_header,
-		size_t current_buffer_size)
+		size_t current_buffer_size,
+		response_header const& resp_header)
 	{
-		return std::visit([&req_header, current_buffer_size]<class T>(T const&) {
+		return std::visit([&req_header, current_buffer_size, resp_header]<class T>(T const&) {
 			using next_state_handler = next_request_state<T>::state_handler;
-			return request_state_holder{make_state_handler<next_state_handler>(req_header, current_buffer_size)};
+			return request_state_holder{
+				make_state_handler<next_state_handler>(req_header, current_buffer_size, resp_header)
+			};
 		}, initial_state);
 	}
 }
