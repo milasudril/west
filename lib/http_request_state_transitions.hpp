@@ -50,7 +50,7 @@ namespace west::http
 
 	template<>
 	struct next_request_state<write_response_body>
-	{ using state_handler = read_request_header; };
+	{ using state_handler = wait_for_data; };
 
 	template<>
 	struct next_request_state<wait_for_data>
@@ -113,6 +113,11 @@ namespace west::http
 	inline auto make_state_handler<write_error_response>(request_header const&,
 		response_header const&)
 	{ return write_error_response{}; }
+
+	template<>
+	inline auto make_state_handler<wait_for_data>(request_header const&,
+		response_header const&)
+	{ return wait_for_data{}; }
 
 
 
