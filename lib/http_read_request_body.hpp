@@ -38,7 +38,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		buffer.consume_elements(bytes_consumed);
 		m_content_length -= bytes_consumed;
 
-		if(is_error_indicator(parse_result.ec))
+		if(should_return(parse_result.ec))
 		{
 			return session_state_response{
 				.status = session_state_status::client_error_detected,

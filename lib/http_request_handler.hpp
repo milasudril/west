@@ -17,7 +17,7 @@ namespace west::http
 	concept error_code = requires(T x)
 	{
 		{to_string(x)} -> std::convertible_to<char const*>;
-		{is_error_indicator(x)} -> std::same_as<bool>;
+		{should_return(x)} -> std::same_as<bool>;
 	};
 
 	template<class T>

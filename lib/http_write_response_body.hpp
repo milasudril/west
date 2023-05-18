@@ -51,7 +51,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 
 			auto read_result = session.request_handler.read_response_content(span_to_write);
 			buffer.reset_with_new_length(read_result.ptr - std::data(span_to_write));
-			if(is_error_indicator(read_result.ec) ||
+			if(should_return(read_result.ec) ||
 				(m_bytes_to_write != 0 && std::size(buffer.span_to_read()) == 0))
 			{
 				return session_state_response{
