@@ -92,7 +92,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				}
 			}
 
-			case io::operation_result::more_data_present:
+			case io::operation_result::object_is_still_ready:
 				break;
 
 			case io::operation_result::operation_would_block:

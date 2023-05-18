@@ -36,7 +36,7 @@ namespace
 				.bytes_read = bytes_to_read,
 				.ec = bytes_to_read == 0 ?
 					west::io::operation_result::completed:
-					west::io::operation_result::more_data_present
+					west::io::operation_result::object_is_still_ready
 			};
 		}
 
@@ -56,7 +56,7 @@ namespace
 
 			return west::io::write_result{
 				.bytes_written = bytes_to_write,
-				.ec = west::io::operation_result::more_data_present
+				.ec = west::io::operation_result::object_is_still_ready
 			};
 		}
 
