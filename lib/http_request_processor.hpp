@@ -10,19 +10,21 @@ namespace west::http
 	template<io::socket Socket, request_handler RequestHandler>
 	class request_processor
 	{
+		using buffer_type = std::array<char, 655536>;
+
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
-			m_session{std::move(connection), std::move(req_handler), request_header{}, response_header{}}
+			m_session{std::move(connection), std::move(req_handler), request_header{}, response_header{}},
+			m_buffer{std::make_unique<buffer_type>()},
+			m_buff_view{*m_buffer}
 		{}
 
 		auto socket_is_ready()
 		{
-			std::array<char, 65536> buffer;
-			io::buffer_view buff_view{buffer};
 			while(true)
 			{
-				auto const res = std::visit([&buff_view, this](auto& state){
-					return state(buff_view, m_session);
+				auto const res = std::visit([this](auto& state){
+					return state(m_buff_view, m_session);
 				}, m_state);
 
 				switch(res.status)
@@ -30,7 +32,7 @@ namespace west::http
 					case session_state_status::completed:
 						m_state = make_state_handler(m_state,
 							m_session.request_header,
-							std::size(buff_view.span_to_read()),
+							std::size(m_buff_view.span_to_read()),
 							m_session.response_header
 						);
 						break;
@@ -66,7 +68,8 @@ namespace west::http
 	private:
 		session<Socket, RequestHandler> m_session;
 		request_state_holder m_state;
+		std::unique_ptr<buffer_type> m_buffer;
+		io::buffer_view<buffer_type::value_type, std::tuple_size_v<buffer_type>> m_buff_view;
 	};
 }
-
 #endif

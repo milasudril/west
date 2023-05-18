@@ -167,7 +167,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 "sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
 "nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
 "Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
-"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis.Some more data."};
 
 	std::string output_buffer;
 	west::http::request_processor proc{data_source{serialized_header, output_buffer}, request_handler{}};
