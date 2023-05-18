@@ -101,7 +101,7 @@ namespace west::http
 
 		auto i = resp_header.fields.find("Content-Length");
 		if(i == std::end(resp_header.fields))
-		{ return request_state_holder{wait_for_data{}}; }
+		{ return request_state_holder{write_response_body{static_cast<size_t>(0)}}; }
 
 		auto length_conv = to_number<size_t>(i->second);
 		assert(length_conv.has_value());

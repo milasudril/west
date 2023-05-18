@@ -106,6 +106,20 @@ namespace
 
 	struct request_handler
 	{
+		request_handler():response_body{
+		"Nullam hendrerit accumsan imperdiet. Aenean posuere "
+"risus in posuere ultricies. Proin dictum nibh dui, non finibus turpis hendrerit vel. Fusce "
+"imperdiet urna id urna laoreet dictum. Nunc ac dapibus est. Integer et posuere urna, non finibus "
+"mi. Vivamus sem nunc, dapibus et turpis at, bibendum viverra dolor. Nullam facilisis lectus ut mi "
+"placerat pharetra. Maecenas id sem id justo dapibus luctus. Fusce sollicitudin lacus ornare "
+"posuere sollicitudin. In non quam eu augue congue rhoncus eu vel odio. Duis aliquam, odio quis "
+"tincidunt interdum, nisl metus sollicitudin metus, sed euismod libero felis eget tortor. Nulla "
+"fringilla posuere est ut interdum. Nulla quis ipsum at ligula luctus imperdiet. Cras aliquam, "
+"orci et tempor scelerisque, neque ex condimentum quam, vitae aliquam risus eros quis nunc. Nam "
+"vestibulum varius tortor."},
+		read_ptr{std::data(response_body)}
+		{}
+
 		auto finalize_state(west::http::request_header const&) const
 		{
 			west::http::finalize_state_result validation_result;
@@ -129,13 +143,21 @@ namespace
 			};
 		}
 
-		auto read_response_content(std::span<char>)
+		auto read_response_content(std::span<char> buffer)
 		{
-
-			return content_read_result{};
+			auto bytes_to_read = std::min(std::size(buffer),
+				static_cast<size_t>(std::end(response_body) - read_ptr));
+			std::copy_n(read_ptr, bytes_to_read, std::data(buffer));
+			read_ptr += bytes_to_read;
+			return content_read_result{
+				.ptr = std::data(buffer) + bytes_to_read,
+				.ec = test_result::ok
+			};
 		}
 
 		std::string request_body;
+		std::string_view response_body;
+		char const* read_ptr;
 	};
 }
 

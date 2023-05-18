@@ -10,7 +10,7 @@ namespace west::http
 	template<io::socket Socket, request_handler RequestHandler>
 	class request_processor
 	{
-		using buffer_type = std::array<char, 655536>;
+		using buffer_type = std::array<char, 65536>;
 
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):

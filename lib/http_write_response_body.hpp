@@ -38,12 +38,19 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 
 		auto write_res = session.connection.write(span_to_read);
 		buffer.consume_elements(write_res.bytes_written);
+
 		m_bytes_to_write -= write_res.bytes_written;
 
 		if(std::size(buffer.span_to_read()) == 0)
 		{
-			auto read_result = session.request_handler.read_response_content(buffer.span_to_write());
-			buffer.reset_with_new_length(read_result.ptr - std::data(buffer.span_to_write()));
+			auto span_to_write = buffer.span_to_write();
+			span_to_write = std::span{
+				std::begin(span_to_write),
+				std::min(m_bytes_to_write, std::size(span_to_write))
+			};
+
+			auto read_result = session.request_handler.read_response_content(span_to_write);
+			buffer.reset_with_new_length(read_result.ptr - std::data(span_to_write));
 			if(is_error_indicator(read_result.ec) || m_bytes_to_write != 0)
 			{
 				return session_state_response{
