@@ -8,17 +8,17 @@
 
 namespace west::io
 {
-	template<class T, size_t N>
+	template<class T, size_t BufferSize>
 	class buffer_span
 	{
 	public:
-		static constexpr auto buffer_size = N;
+		static constexpr auto buffer_size = BufferSize;
 
-		explicit buffer_span(std::array<T, N>& buffer):
+		explicit buffer_span(std::array<T, BufferSize>& buffer):
 			buffer_span{std::span{buffer}}
 		{}
 
-		explicit buffer_span(std::span<T, N> buffer):
+		explicit buffer_span(std::span<T, BufferSize> buffer):
 			m_start{std::data(buffer)},
 			m_begin{std::data(buffer)},
 			m_end{std::data(buffer)}
@@ -27,7 +27,10 @@ namespace west::io
 		}
 
 		std::span<T> span_to_write() const
-		{ return std::span{m_start, m_start + N}; }
+		{ return std::span{m_start, m_start + BufferSize}; }
+
+		std::span<T> span_to_write(size_t max_length) const
+		{ return std::span{m_start, std::min(max_length, BufferSize)}; }
 
 		void reset_with_new_length(size_t length)
 		{
@@ -38,6 +41,9 @@ namespace west::io
 
 		std::span<T const> span_to_read() const
 		{ return std::span{m_begin, m_end}; }
+
+		std::span<T const> span_to_read(size_t max_length) const
+		{ return std::span{m_begin, std::min(max_length, std::size(span_to_read()))}; }
 
 		void consume_elements(size_t count)
 		{
@@ -76,6 +82,33 @@ namespace west::io
 	{
 		{x.write(y)} -> std::same_as<write_result>;
 	};
+
+	template<data_source Source, data_sink Sink, size_t BufferSize>
+	auto transfer_data(Source& from, Sink& to, buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
+	{
+		while(bytes_left != 0)
+		{
+			auto const span_to_read = buffer.span_to_read(bytes_left);
+			auto const write_result = to.write(span_to_read);
+			buffer.consume_elements(write_result.bytes_written);
+			bytes_left -= write_result.bytes_written;
+
+			if(should_return(write_result.ec))
+			{ return make_data_transfer_result(write_result.ec); }
+
+			if(std::size(buffer.span_to_read()) == 0 && bytes_left != 0)
+			{
+				auto span_to_write = buffer.span_to_write(bytes_left);
+				auto const read_result = from.read(span_to_write);
+				buffer.reset_with_new_length(read_result.bytes_read);
+
+				if(should_return(read_result.ec))
+				{ return make_data_transfer_result(read_result.ec); }
+			}
+		}
+
+		// FIXME return value here
+	}
 
 	template<class T>
 	concept socket = requires(T x, std::span<char> y, std::span<char const> z)

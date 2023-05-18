@@ -251,6 +251,7 @@ TESTCASE(west_http_request_processor_process_consecutive_reqs_full_read)
 			printf("(%s)\n", proc.get_request_handler().request_body.c_str());
 			printf("(%s)\n", output_buffer.c_str());
 			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			break;
 		}
 	}
 }
