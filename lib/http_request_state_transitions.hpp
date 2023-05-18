@@ -92,6 +92,7 @@ namespace west::http
 	{ static constexpr size_t value = 1; };
 
 
+
 	template<class T>
 	inline auto make_state_handler(request_header const&, response_header const&);
 
