@@ -33,33 +33,6 @@ namespace west::io
 		{x.write(y)} -> std::same_as<write_result>;
 	};
 
-	template<data_source Source, data_sink Sink, size_t BufferSize>
-	auto transfer_data(Source& from, Sink& to, buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
-	{
-		while(bytes_left != 0)
-		{
-			auto const span_to_read = buffer.span_to_read(bytes_left);
-			auto const write_result = to.write(span_to_read);
-			buffer.consume_elements(write_result.bytes_written);
-			bytes_left -= write_result.bytes_written;
-
-			if(should_return(write_result.ec))
-			{ return make_data_transfer_result(write_result.ec); }
-
-			if(std::size(buffer.span_to_read()) == 0 && bytes_left != 0)
-			{
-				auto span_to_write = buffer.span_to_write(bytes_left);
-				auto const read_result = from.read(span_to_write);
-				buffer.reset_with_new_length(read_result.bytes_read);
-
-				if(should_return(read_result.ec))
-				{ return make_data_transfer_result(read_result.ec); }
-			}
-		}
-
-		// FIXME return value here
-	}
-
 	template<class T>
 	concept socket = requires(T x, std::span<char> y, std::span<char const> z)
 	{
