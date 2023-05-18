@@ -243,9 +243,7 @@ TESTCASE(west_http_request_processor_process_consecutive_reqs_full_read)
 	std::string output_buffer;
 	west::http::request_processor proc{data_source{serialized_header, output_buffer, 65536}, request_handler{}};
 
-	constexpr auto num_reqs = 1;
-	size_t k = 0;
-	while(k != num_reqs)
+	while(true)
 	{
 		auto const res = proc.socket_is_ready();
 		if(res != west::http::request_processor_status::more_data_needed)
@@ -253,7 +251,6 @@ TESTCASE(west_http_request_processor_process_consecutive_reqs_full_read)
 			printf("(%s)\n", proc.get_request_handler().request_body.c_str());
 			printf("(%s)\n", output_buffer.c_str());
 			EXPECT_EQ(res, west::http::request_processor_status::completed);
-			++k;
 		}
 	}
 }
