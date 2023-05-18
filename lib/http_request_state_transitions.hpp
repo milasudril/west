@@ -63,21 +63,16 @@ namespace west::http
 
 
 	template<class T>
-	inline auto make_state_handler(request_header const&, size_t, response_header const&);
+	inline auto make_state_handler(request_header const&, response_header const&);
 
 	template<>
-	inline auto make_state_handler<read_request_header>(request_header const&,
-		size_t current_buffer_size,
-		response_header const&)
+	inline auto make_state_handler<read_request_header>(request_header const&, response_header const&)
 	{
-		if(current_buffer_size == 0)
-		{ return request_state_holder{wait_for_data{}}; }
 		return request_state_holder{read_request_header{}};
 	}
 
 	template<>
 	inline auto make_state_handler<read_request_body>(request_header const& req_header,
-		size_t,
 		response_header const&)
 	{
 		auto i = req_header.fields.find("Content-Length");
@@ -93,7 +88,6 @@ namespace west::http
 
 	template<>
 	inline auto make_state_handler<write_response_header>(request_header const&,
-		size_t,
 		response_header const& resp_header)
 	{
 		return write_response_header{resp_header};
@@ -101,7 +95,6 @@ namespace west::http
 
 	template<>
 	inline auto make_state_handler<write_response_body>(request_header const&,
-		size_t,
 		response_header const& resp_header)
 	{
 		assert(!resp_header.fields.contains("Transfer-encoding"));
@@ -118,7 +111,6 @@ namespace west::http
 
 	template<>
 	inline auto make_state_handler<write_error_response>(request_header const&,
-		size_t,
 		response_header const&)
 	{ return write_error_response{}; }
 
@@ -126,14 +118,11 @@ namespace west::http
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
 		request_header const& req_header,
-		size_t current_buffer_size,
 		response_header const& resp_header)
 	{
-		return std::visit([&req_header, current_buffer_size, resp_header]<class T>(T const&) {
+		return std::visit([&req_header, resp_header]<class T>(T const&) {
 			using next_state_handler = next_request_state<T>::state_handler;
-			return request_state_holder{
-				make_state_handler<next_state_handler>(req_header, current_buffer_size, resp_header)
-			};
+			return request_state_holder{ make_state_handler<next_state_handler>(req_header, resp_header)};
 		}, initial_state);
 	}
 }

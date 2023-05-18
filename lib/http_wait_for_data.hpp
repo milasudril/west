@@ -22,6 +22,15 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io::buffer_view<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
+	if(std::size(buffer.span_to_read()) != 0)
+	{
+		return session_state_response{
+			.status = session_state_status::completed,
+			.http_status = status::ok,
+			.error_message = nullptr
+		};
+	}
+
 	while(true)
 	{
 		auto const read_result = session.connection.read(buffer.span_to_write());
