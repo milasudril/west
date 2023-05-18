@@ -213,7 +213,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 	}
 }
 #endif
-#if 0
+#if 1
 TESTCASE(west_http_request_processor_process_consecutive_reqs_full_read)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"

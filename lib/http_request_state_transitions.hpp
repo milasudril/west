@@ -33,6 +33,8 @@ namespace west::http
 		wait_for_data,
 		write_error_response>;
 
+
+
 	template<class T>
 	struct next_request_state{};
 
@@ -63,11 +65,40 @@ namespace west::http
 
 
 	template<class T>
+	struct select_buffer_index{};
+
+	template<>
+	struct select_buffer_index<read_request_header>
+	{ static constexpr size_t value = 0; };
+
+	template<>
+	struct select_buffer_index<read_request_body>
+	{ static constexpr size_t value = 0; };
+
+	template<>
+	struct select_buffer_index<write_response_header>
+	{ static constexpr size_t value = 1; };
+
+	template<>
+	struct select_buffer_index<write_response_body>
+	{ static constexpr size_t value = 1; };
+
+	template<>
+	struct select_buffer_index<wait_for_data>
+	{ static constexpr size_t value = 0; };
+
+	template<>
+	struct select_buffer_index<write_error_response>
+	{ static constexpr size_t value = 1; };
+
+
+	template<class T>
 	inline auto make_state_handler(request_header const&, response_header const&);
 
 	template<>
 	inline auto make_state_handler<read_request_header>(request_header const&, response_header const&)
 	{
+		puts("...Got data");
 		return read_request_header{};
 	}
 
@@ -117,7 +148,11 @@ namespace west::http
 	template<>
 	inline auto make_state_handler<wait_for_data>(request_header const&,
 		response_header const&)
-	{ return wait_for_data{}; }
+	{
+		puts("==================");
+		return wait_for_data{};
+
+	}
 
 
 

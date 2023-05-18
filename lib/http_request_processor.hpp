@@ -15,16 +15,17 @@ namespace west::http
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
 			m_session{std::move(connection), std::move(req_handler), request_header{}, response_header{}},
-			m_buffer{std::make_unique<buffer_type>()},
-			m_buff_view{*m_buffer}
+			m_recv_buffer{std::make_unique<buffer_type>()},
+			m_send_buffer{std::make_unique<buffer_type>()},
+			m_buff_spans{buffer_span{*m_recv_buffer}, buffer_span{*m_send_buffer}}
 		{}
 
 		auto socket_is_ready()
 		{
 			while(true)
 			{
-				auto const res = std::visit([this](auto& state){
-					return state(m_buff_view, m_session);
+				auto const res = std::visit([this]<class T>(T& state){
+					return state(std::get<select_buffer_index<T>::value>(m_buff_spans), m_session);
 				}, m_state);
 
 				switch(res.status)
@@ -65,8 +66,11 @@ namespace west::http
 	private:
 		session<Socket, RequestHandler> m_session;
 		request_state_holder m_state;
-		std::unique_ptr<buffer_type> m_buffer;
-		io::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>> m_buff_view;
+		std::unique_ptr<buffer_type> m_recv_buffer;
+		std::unique_ptr<buffer_type> m_send_buffer;
+
+		using buffer_span = io::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
+		std::array<buffer_span, 2> m_buff_spans;
 	};
 }
 #endif
