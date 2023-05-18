@@ -65,7 +65,7 @@ namespace west::http
 		session<Socket, RequestHandler> m_session;
 		request_state_holder m_state;
 		std::unique_ptr<buffer_type> m_buffer;
-		io::buffer_view<buffer_type::value_type, std::tuple_size_v<buffer_type>> m_buff_view;
+		io::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>> m_buff_view;
 	};
 }
 #endif

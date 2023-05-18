@@ -12,14 +12,14 @@ namespace west::http
 	{
 	public:
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
+		[[nodiscard]] auto operator()(io::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 	};
 }
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::wait_for_data::operator()(
-	io::buffer_view<char, BufferSize>& buffer,
+	io::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
 	if(std::size(buffer.span_to_read()) != 0)

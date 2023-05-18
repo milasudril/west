@@ -16,7 +16,7 @@ namespace west::http
 		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>& buffer,
+		[[nodiscard]] auto operator()(io::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
 	private:
@@ -26,7 +26,7 @@ namespace west::http
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_body::operator()(
-	io::buffer_view<char, BufferSize>& buffer,
+	io::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
 	while(m_content_length != 0)

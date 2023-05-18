@@ -9,16 +9,16 @@
 namespace west::io
 {
 	template<class T, size_t N>
-	class buffer_view
+	class buffer_span
 	{
 	public:
 		static constexpr auto buffer_size = N;
 
-		explicit buffer_view(std::array<T, N>& buffer):
-			buffer_view{std::span{buffer}}
+		explicit buffer_span(std::array<T, N>& buffer):
+			buffer_span{std::span{buffer}}
 		{}
 
-		explicit buffer_view(std::span<T, N> buffer):
+		explicit buffer_span(std::span<T, N> buffer):
 			m_start{std::data(buffer)},
 			m_begin{std::data(buffer)},
 			m_end{std::data(buffer)}

@@ -16,7 +16,7 @@ namespace west::http
 	{
 	public:
 		template<class T, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_view<char, BufferSize>&, T const&)
+		[[nodiscard]] auto operator()(io::buffer_span<char, BufferSize>&, T const&)
 		{
 			return session_state_response{
 				.status = session_state_status::io_error,
