@@ -4,6 +4,7 @@
 #include "./http_read_request_header.hpp"
 #include "./http_read_request_body.hpp"
 #include "./http_write_response_header.hpp"
+#include "./http_write_response_body.hpp"
 #include "./http_wait_for_data.hpp"
 
 #include <variant>
@@ -28,6 +29,7 @@ namespace west::http
 	using request_state_holder = std::variant<read_request_header,
 		read_request_body,
 		write_response_header,
+		write_response_body,
 		wait_for_data,
 		write_error_response>;
 
@@ -44,6 +46,10 @@ namespace west::http
 
 	template<>
 	struct next_request_state<write_response_header>
+	{ using state_handler = write_response_body; };
+
+	template<>
+	struct next_request_state<write_response_body>
 	{ using state_handler = read_request_header; };
 
 	template<>
@@ -70,20 +76,6 @@ namespace west::http
 	}
 
 	template<>
-	inline auto make_state_handler<write_response_header>(request_header const&,
-		size_t,
-		response_header const& resp_header)
-	{
-		return write_response_header{resp_header};
-	}
-
-	template<>
-	inline auto make_state_handler<write_error_response>(request_header const&,
-		size_t,
-		response_header const&)
-	{ return write_error_response{}; }
-
-	template<>
 	inline auto make_state_handler<read_request_body>(request_header const& req_header,
 		size_t,
 		response_header const&)
@@ -98,6 +90,39 @@ namespace west::http
 
 		return request_state_holder{read_request_body{*length_conv}};
 	}
+
+	template<>
+	inline auto make_state_handler<write_response_header>(request_header const&,
+		size_t,
+		response_header const& resp_header)
+	{
+		return write_response_header{resp_header};
+	}
+
+	template<>
+	inline auto make_state_handler<write_response_body>(request_header const&,
+		size_t,
+		response_header const& resp_header)
+	{
+		assert(!resp_header.fields.contains("Transfer-encoding"));
+
+		auto i = resp_header.fields.find("Content-Length");
+		if(i == std::end(resp_header.fields))
+		{ return request_state_holder{wait_for_data{}}; }
+
+		auto length_conv = to_number<size_t>(i->second);
+		assert(length_conv.has_value());
+
+		return request_state_holder{write_response_body{*length_conv}};
+	}
+
+	template<>
+	inline auto make_state_handler<write_error_response>(request_header const&,
+		size_t,
+		response_header const&)
+	{ return write_error_response{}; }
+
+
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
 		request_header const& req_header,

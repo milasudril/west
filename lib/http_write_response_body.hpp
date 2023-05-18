@@ -1,5 +1,5 @@
-#ifndef WEST_HTTP_WRITE_REQUEST_HEADER_HPP
-#define WEST_HTTP_WRITE_REQUEST_HEADER_HPP
+#ifndef WEST_HTTP_WRITE_RESPONSE_BODY_HPP
+#define WEST_HTTP_WRITE_RESPONSE_BODY_HPP
 
 #include "./io_interfaces.hpp"
 #include "./http_request_handler.hpp"
@@ -19,7 +19,7 @@ namespace west::http
 			session<Source, RequestHandler>& session);
 
 	private:
-		size_t bytes_to_write;
+		size_t m_bytes_to_write;
 	};
 }
 
@@ -28,7 +28,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io::buffer_view<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-	while(m_bytes_to_write != 0)
+	while(true)
 	{
 		auto span_to_read = buffer.span_to_read();
 		span_to_read = std::span{
@@ -42,14 +42,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 
 		if(std::size(buffer.span_to_read()) == 0)
 		{
-			auto read_result = session,request_handler.read_response_content(buffer.span_to_write());
+			auto read_result = session.request_handler.read_response_content(buffer.span_to_write());
 			buffer.reset_with_new_length(read_result.ptr - std::data(buffer.span_to_write()));
-			if(is_error_indicator(x.ec) || m_bytes_to_write != 0)
+			if(is_error_indicator(read_result.ec) || m_bytes_to_write != 0)
 			{
 				return session_state_response{
 					.status = session_state_status::io_error,
 					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr(to_string(parse_result.ec))
+					.error_message = make_unique_cstr(to_string(read_result.ec))
 				};
 			}
 

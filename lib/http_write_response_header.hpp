@@ -1,5 +1,5 @@
-#ifndef WEST_HTTP_WRITE_REQUEST_HEADER_HPP
-#define WEST_HTTP_WRITE_REQUEST_HEADER_HPP
+#ifndef WEST_HTTP_WRITE_RESPONSE_HEADER_HPP
+#define WEST_HTTP_WRITE_RESPONSE_HEADER_HPP
 
 #include "./io_interfaces.hpp"
 #include "./http_request_handler.hpp"
