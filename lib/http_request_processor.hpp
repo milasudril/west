@@ -40,13 +40,14 @@ namespace west::http
 						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
-						printf("Error: %s (state %zu)\n", res.error_message.get(), m_state.index());
+						printf("Client error: %s (state %zu)\n", res.error_message.get(), m_state.index());
 						// TODO: go to state for writing error report
 						m_session.connection.stop_reading();
 						m_state = write_error_response{};
 						break;
 
 					case session_state_status::io_error:
+						printf("I/O error: %s (state %zu)\n", res.error_message.get(), m_state.index());
 						return request_processor_status::io_error;
 				}
 			}

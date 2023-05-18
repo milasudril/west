@@ -10,10 +10,11 @@ namespace
 	class data_source
 	{
 	public:
-		explicit data_source(std::string_view buffer, std::string& output_buffer):
+		explicit data_source(std::string_view buffer, std::string& output_buffer, size_t bytes_per_block = 13):
 			m_buffer{buffer},
 			m_ptr{std::begin(buffer)},
-			m_output_buffer{output_buffer}
+			m_output_buffer{output_buffer},
+			m_bytes_per_block{bytes_per_block}
 		{}
 
 		auto read(std::span<char> output_buffer)
@@ -29,7 +30,7 @@ namespace
 				};
 			}
 
-			auto const bytes_to_read = std::min(std::min(std::size(output_buffer), remaining), static_cast<size_t>(13));
+			auto const bytes_to_read = std::min(std::min(std::size(output_buffer), remaining), m_bytes_per_block);
 			std::copy_n(m_ptr, remaining, std::begin(output_buffer));
 			m_ptr += bytes_to_read;
 			return west::io::read_result{
@@ -51,7 +52,7 @@ namespace
 				};
 			}
 
-			auto const bytes_to_write = std::min(std::size(data), static_cast<size_t>(13));
+			auto const bytes_to_write = std::min(std::size(data), m_bytes_per_block);
 			m_output_buffer.get().insert(std::size(m_output_buffer.get()), std::data(data), bytes_to_write);
 
 			return west::io::write_result{
@@ -71,6 +72,7 @@ namespace
 		std::minstd_rand m_rng;
 
 		std::reference_wrapper<std::string> m_output_buffer;
+		size_t m_bytes_per_block;
 	};
 
 	enum class test_result{ok, failure};
@@ -128,11 +130,17 @@ namespace
 			return validation_result;
 		}
 
-		template<class T>
-		auto finalize_state(T) const
+
+		auto finalize_state(west::http::field_map& header_fields) const
 		{
-			return west::http::finalize_state_result{};
+			header_fields.append("Content-Length", std::to_string(std::size(response_body)));
+			west::http::finalize_state_result validation_result;
+			validation_result.http_status = west::http::status::ok;
+			validation_result.error_message = west::make_unique_cstr("This string comes from the test case");
+			return validation_result;
+
 		}
+
 
 		auto process_request_content(std::span<char const> buffer)
 		{
@@ -161,9 +169,7 @@ namespace
 	};
 }
 
-template<size_t N>
-struct foo{};
-
+#if 1
 TESTCASE(west_http_request_processor_process_good_request)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
@@ -206,3 +212,48 @@ TESTCASE(west_http_request_processor_process_good_request)
 		}
 	}
 }
+#endif
+#if 0
+TESTCASE(west_http_request_processor_process_consecutive_reqs_full_read)
+{
+	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0\r\n"
+"Accept: text/html,application/xhtml+xml,application/xml;\r\n"
+"\t q=0.9,image/avif,image/webp,*/*;\r\n"
+" \r\n"
+" \tq=0.8\r\n"
+"Accept-Language: sv-SE,sv;q=0.8,en-US;q=0.5,en;q=0.3\r\n"
+"Accept-Encoding: gzip, deflate\r\n"
+"Accept-Encoding: br\r\n"
+"DNT: 1\r\n"
+"Connection: keep-alive\r\n"
+"Content-Length: 0\r\n"
+"Upgrade-Insecure-Requests: 1\r\n"
+"Sec-Fetch-Dest: document\r\n"
+"Sec-Fetch-Mode: navigate\r\n"
+"Sec-Fetch-Site: none\r\n"
+"Sec-Fetch-User: ?1\r\n"
+"\r\n"
+"GET /favicon.ico HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"\r\n"};
+
+	std::string output_buffer;
+	west::http::request_processor proc{data_source{serialized_header, output_buffer, 65536}, request_handler{}};
+
+	constexpr auto num_reqs = 2;
+	size_t k = 0;
+	while(k != num_reqs)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			printf("(%s)\n", proc.get_request_handler().request_body.c_str());
+			printf("(%s)\n", output_buffer.c_str());
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			++k;
+		}
+	}
+}
+#endif
