@@ -10,9 +10,10 @@ namespace
 	class data_source
 	{
 	public:
-		explicit data_source(std::string_view buffer):
+		explicit data_source(std::string_view buffer, std::string& output_buffer):
 			m_buffer{buffer},
-			m_ptr{std::begin(buffer)}
+			m_ptr{std::begin(buffer)},
+			m_output_buffer{output_buffer}
 		{}
 
 		auto read(std::span<char> output_buffer)
@@ -28,7 +29,7 @@ namespace
 				};
 			}
 
-			auto bytes_to_read =std::min(std::min(std::size(output_buffer), remaining), static_cast<size_t>(13));
+			auto const bytes_to_read = std::min(std::min(std::size(output_buffer), remaining), static_cast<size_t>(13));
 			std::copy_n(m_ptr, remaining, std::begin(output_buffer));
 			m_ptr += bytes_to_read;
 			return west::io::read_result{
@@ -39,11 +40,23 @@ namespace
 			};
 		}
 
-		auto write(std::span<char const>)
+		auto write(std::span<char const> data)
 		{
+			std::bernoulli_distribution io_should_block{0.25};
+			if(io_should_block(m_rng))
+			{
+				return west::io::write_result{
+					.bytes_written = 0,
+					.ec = west::io::operation_result::operation_would_block
+				};
+			}
+
+			auto const bytes_to_write = std::min(std::size(data), static_cast<size_t>(13));
+			m_output_buffer.get().insert(std::size(m_output_buffer.get()), std::data(data), bytes_to_write);
+
 			return west::io::write_result{
-				.bytes_written = 0,
-				.ec = west::io::operation_result::error
+				.bytes_written = bytes_to_write,
+				.ec = west::io::operation_result::more_data_present
 			};
 		}
 
@@ -55,8 +68,9 @@ namespace
 	private:
 		std::string_view m_buffer;
 		char const* m_ptr;
-		size_t m_callcount;
 		std::minstd_rand m_rng;
+
+		std::reference_wrapper<std::string> m_output_buffer;
 	};
 
 	enum class test_result{ok, failure};
@@ -117,6 +131,7 @@ namespace
 
 		auto read_response_content(std::span<char>)
 		{
+
 			return content_read_result{};
 		}
 
@@ -154,7 +169,8 @@ TESTCASE(west_http_request_processor_process_good_request)
 "Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
 "purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
 
-	west::http::request_processor proc{data_source{serialized_header}, request_handler{}};
+	std::string output_buffer;
+	west::http::request_processor proc{data_source{serialized_header, output_buffer}, request_handler{}};
 
 	while(true)
 	{
@@ -162,6 +178,7 @@ TESTCASE(west_http_request_processor_process_good_request)
 		if(res != west::http::request_processor_status::more_data_needed)
 		{
 			printf("(%s)\n", proc.get_request_handler().request_body.c_str());
+			printf("(%s)\n", output_buffer.c_str());
 			EXPECT_EQ(res, west::http::request_processor_status::completed);
 			break;
 		}
