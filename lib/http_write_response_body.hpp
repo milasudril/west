@@ -57,7 +57,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				return session_state_response{
 					.status = session_state_status::io_error,
 					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr(to_string(read_result.ec))
+					.error_message = make_unique_cstr("Request handler has no data to deliver")
 				};
 			}
 
@@ -88,7 +88,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					return session_state_response{
 						.status = session_state_status::io_error,
 						.http_status = status::internal_server_error,
-						.error_message = make_unique_cstr("I/O error")
+						.error_message = make_unique_cstr("Client disconnected")
 					};
 				}
 			}
