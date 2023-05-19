@@ -201,4 +201,52 @@ TESTCASE(west_io_adapter_transfer_data_return_by_write)
 	EXPECT_EQ(output_buffer, "Aenean blandi");
 	EXPECT_EQ(std::size(span.span_to_read()), 0);
 	EXPECT_EQ(std::size(span.span_to_write()), std::size(buffer));
+	EXPECT_EQ(bytes_left, std::size(buffer) - 13);
+}
+
+TESTCASE(west_io_adapter_transfer_data_return_by_read)
+{
+	static constexpr std::string_view str{"Aenean blandit erat nec odio congue, eu finibus nunc gravida"};
+	std::array<char, std::size(str)> buffer{};
+
+	west::io_adapter::buffer_span span{buffer};
+	auto bytes_left = std::size(buffer);
+	std::string output_buffer;
+
+	auto res = transfer_data([
+			src_ptr = std::data(str),
+			bytes_left = std::size(str)
+		](std::span<char> buffer) mutable {
+			auto bytes_to_read =std::min(static_cast<size_t>(13), bytes_left);
+			std::copy_n(src_ptr, bytes_to_read, std::begin(buffer));
+			bytes_left -= bytes_to_read;
+			src_ptr += bytes_to_read;
+			return read_result{bytes_to_read, read_error::exit};
+		},
+		[&output_buffer](std::span<char const> buffer){
+			if(std::size(buffer) == 0)
+			{ return write_result{0,  write_error::keep_going}; }
+
+			EXPECT_EQ(std::size(buffer), 13);
+			auto bytes_to_write = std::min(static_cast<size_t>(23), std::size(buffer));
+			std::copy_n(std::data(buffer), bytes_to_write, std::back_inserter(output_buffer));
+			return write_result{bytes_to_write,  write_error::keep_going};
+		},
+		west::overload{[](){return retval::exit_at_end_of_buffer;},
+			[](read_error ec){
+				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
+			},
+			[](write_error ec){
+				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
+			}
+		},
+		span,
+		bytes_left);
+
+	EXPECT_EQ(res, retval::exit_by_read);
+	EXPECT_EQ(std::size(span.span_to_read()), 13);
+	EXPECT_EQ(std::size(span.span_to_write()), std::size(buffer));
+
+	// But we have consumed 13 bytes from the data source?
+	// EXPECT_EQ(bytes_left, std::size(buffer) - 13);
 }
