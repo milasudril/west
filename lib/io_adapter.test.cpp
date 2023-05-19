@@ -2,6 +2,8 @@
 
 #include "./io_adapter.hpp"
 
+#include "./utils.hpp"
+
 #include <testfwk/testfwk.hpp>
 #include <algorithm>
 
@@ -131,4 +133,72 @@ TESTCASE(west_io_adapter_bufferspan_reset_with_new_length_and_consume)
 		EXPECT_EQ(std::data(span_to_read_sliced_3), std::data(buffer) + elements_to_consume);
 		EXPECT_EQ(std::size(span_to_read_sliced_3), new_size - elements_to_consume);
 	}
+}
+
+namespace
+{
+	enum class read_error{exit, keep_going};
+	enum class write_error{exit, keep_going};
+
+	enum class retval{exit_by_write, exit_by_read, exit_at_end_of_buffer};
+
+	template<class T>
+	constexpr bool should_return(T ec)
+	{ return ec == T::exit; }
+
+	struct read_result
+	{
+		size_t bytes_read;
+		read_error ec;
+	};
+
+	struct write_result
+	{
+		size_t bytes_written;
+		write_error ec;
+	};
+}
+
+TESTCASE(west_io_adapter_transfer_data_return_by_write)
+{
+	static constexpr std::string_view str{"Aenean blandit erat nec odio congue, eu finibus nunc gravida"};
+	std::array<char, std::size(str)> buffer{};
+
+	west::io_adapter::buffer_span span{buffer};
+	auto bytes_left = std::size(buffer);
+	std::string output_buffer;
+
+	auto res = transfer_data([
+			src_ptr = std::data(str),
+			bytes_left = std::size(str)
+		](std::span<char> buffer) mutable {
+			auto bytes_to_read =std::min(static_cast<size_t>(13), bytes_left);
+			std::copy_n(src_ptr, bytes_to_read, std::begin(buffer));
+			bytes_left -= bytes_to_read;
+			src_ptr += bytes_to_read;
+			return read_result{bytes_to_read, read_error::keep_going};
+		},
+		[&output_buffer](std::span<char const> buffer){
+			if(std::size(buffer) == 0)
+			{ return write_result{0,  write_error::keep_going}; }
+			EXPECT_EQ(std::size(buffer), 13);
+			auto bytes_to_write = std::min(static_cast<size_t>(23), std::size(buffer));
+			std::copy_n(std::data(buffer), bytes_to_write, std::back_inserter(output_buffer));
+			return write_result{bytes_to_write,  write_error::exit};
+		},
+		west::overload{[](){return retval::exit_at_end_of_buffer;},
+			[](read_error ec){
+				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
+			},
+			[](write_error ec){
+				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
+			}
+		},
+		span,
+		bytes_left);
+
+	EXPECT_EQ(res, retval::exit_by_write);
+	EXPECT_EQ(output_buffer, "Aenean blandi");
+	EXPECT_EQ(std::size(span.span_to_read()), 0);
+	EXPECT_EQ(std::size(span.span_to_write()), std::size(buffer));
 }

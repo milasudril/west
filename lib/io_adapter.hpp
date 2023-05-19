@@ -4,6 +4,7 @@
 #include <span>
 #include <array>
 #include <cassert>
+#include <utility>
 
 namespace west::io_adapter
 {
@@ -16,7 +17,7 @@ namespace west::io_adapter
 	template<class T>
 	concept read_result = requires(T x)
 	{
-		{x.bytes_read} -> std::same_as<size_t>;
+		{x.bytes_read} -> std::same_as<size_t&>;
 		{x.ec} -> error_code;
 	};
 
@@ -29,7 +30,7 @@ namespace west::io_adapter
 	template<class T>
 	concept write_result = requires(T x)
 	{
-		{x.bytes_written} -> std::same_as<size_t>;
+		{x.bytes_written} -> std::same_as<size_t&>;
 		{x.ec} -> error_code;
 	};
 
@@ -89,9 +90,21 @@ namespace west::io_adapter
 		T* m_end;
 	};
 
+	namespace detail
+	{
+		template<class R>
+		using read_function_res = std::invoke_result_t<R, std::span<char>>;
+
+		template<class W>
+		using write_function_res = std::invoke_result_t<W, std::span<char const>>;
+
+		template<class Result>
+		using ec_type = std::remove_cvref_t<decltype(std::declval<Result>().ec)>;
+	}
+
 	template<read_function R, write_function W, class ErrorCodeMapper, size_t BufferSize>
-	requires(error_code_mapper<ErrorCodeMapper, decltype(std::declval(R{})(std::span<char>{}))>
-	&& error_code_mapper<ErrorCodeMapper, decltype(std::declval(W{})(std::span<char>{}))>)
+	requires(error_code_mapper<ErrorCodeMapper, detail::ec_type<detail::read_function_res<R>>>
+		&& error_code_mapper<ErrorCodeMapper, detail::ec_type<detail::write_function_res<W>>>)
 	auto transfer_data(R&& read,
 		W&& write,
 		ErrorCodeMapper&& map_error_code,

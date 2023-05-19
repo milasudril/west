@@ -30,6 +30,12 @@ namespace west
 
 		return ret;
 	}
+
+	template<class ... Args>
+	struct overload : Args...
+	{
+		using Args::operator() ...;
+	};
 }
 
 #endif

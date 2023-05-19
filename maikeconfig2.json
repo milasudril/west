@@ -37,7 +37,7 @@
                             "-Wconversion",
                             "-Wno-psabi",
                             "-I.",
-                            "-fconcepts-diagnostics-depth=2"
+                            "-fconcepts-diagnostics-depth=3"
                         ],
                         "iquote": [
                             "."
