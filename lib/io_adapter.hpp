@@ -2,13 +2,14 @@
 #define WEST_IOADAPTER_HPP
 
 #include <span>
+#include <array>
+#include <cassert>
 
 namespace west::io_adapter
 {
 	template<class T>
 	concept error_code = requires(T x)
 	{
-		{to_string(x)} -> std::convertible_to<char const*>;
 		{should_return(x)} -> std::same_as<bool>;
 	};
 
@@ -39,8 +40,7 @@ namespace west::io_adapter
 	};
 
 	template<class T, class ErrorCode>
-	concept error_code_mapper = error_code<ErrorCode>
-	&& requires(T x, ErrorCode ec)
+	concept error_code_mapper = error_code<ErrorCode> && requires(T x, ErrorCode ec)
 	{
 		{x(ec)};
 		{x()};
@@ -56,14 +56,6 @@ namespace west::io_adapter
 			buffer_span{std::span{buffer}}
 		{}
 
-		explicit buffer_span(std::span<T, BufferSize> buffer):
-			m_start{std::data(buffer)},
-			m_begin{std::data(buffer)},
-			m_end{std::data(buffer)}
-		{
-			assert(m_begin != nullptr);
-		}
-
 		std::span<T> span_to_write() const
 		{ return std::span{m_start, m_start + BufferSize}; }
 
@@ -72,8 +64,8 @@ namespace west::io_adapter
 
 		void reset_with_new_length(size_t length)
 		{
+			assert(length < BufferSize);
 			m_begin = m_start;
-			assert(m_begin != nullptr);
 			m_end = m_start + length;
 		}
 
@@ -85,8 +77,8 @@ namespace west::io_adapter
 
 		void consume_elements(size_t count)
 		{
+			assert((m_end - m_begin) >= count);
 			m_begin += count;
-			assert(m_begin != nullptr);
 		}
 
 	private:
