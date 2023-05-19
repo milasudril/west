@@ -246,7 +246,5 @@ TESTCASE(west_io_adapter_transfer_data_return_by_read)
 	EXPECT_EQ(res, retval::exit_by_read);
 	EXPECT_EQ(std::size(span.span_to_read()), 13);
 	EXPECT_EQ(std::size(span.span_to_write()), std::size(buffer));
-
-	// But we have consumed 13 bytes from the data source?
-	// EXPECT_EQ(bytes_left, std::size(buffer) - 13);
+	EXPECT_EQ(bytes_left, std::size(buffer) - 13);
 }
