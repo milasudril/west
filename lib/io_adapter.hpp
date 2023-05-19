@@ -53,7 +53,9 @@ namespace west::io_adapter
 		static constexpr auto buffer_size = BufferSize;
 
 		explicit buffer_span(std::array<T, BufferSize>& buffer):
-			buffer_span{std::span{buffer}}
+			m_start{std::data(buffer)},
+			m_begin{std::data(buffer)},
+			m_end{std::data(buffer)}
 		{}
 
 		std::span<T> span_to_write() const
@@ -77,7 +79,7 @@ namespace west::io_adapter
 
 		void consume_elements(size_t count)
 		{
-			assert((m_end - m_begin) >= count);
+			assert(static_cast<size_t>(m_end - m_begin) >= count);
 			m_begin += count;
 		}
 
