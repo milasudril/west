@@ -115,9 +115,6 @@ namespace west::io_adapter
 			auto const span_to_read = buffer.span_to_read(bytes_left);
 			auto const write_result = write(span_to_read);
 			buffer.consume_elements(write_result.bytes_written);
-			// This is the correct place to decrement bytes_left, because we may have pending
-			// data in buffer that belongs to this batch.
-			bytes_left -= write_result.bytes_written;
 
 			if(should_return(write_result.ec))
 			{ return map_error_code(write_result.ec); }
@@ -127,13 +124,10 @@ namespace west::io_adapter
 				auto span_to_write = buffer.span_to_write(bytes_left);
 				auto const read_result = read(span_to_write);
 				buffer.reset_with_new_length(read_result.bytes_read);
+				bytes_left -= read_result.bytes_read;
 
 				if(should_return(read_result.ec))
-				{
-					// Decrement bytes left by the number of bytes consumed from the input stream.
-					bytes_left -= read_result.bytes_read;
-					return map_error_code(read_result.ec);
-				}
+				{ return map_error_code(read_result.ec); }
 			}
 		}
 		return map_error_code();
