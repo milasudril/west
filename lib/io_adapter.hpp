@@ -110,6 +110,9 @@ namespace west::io_adapter
 		ErrorCodeMapper&& map_error_code,
 		buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
 	{
+		if(bytes_left == 0)
+		{ return map_error_code(); }
+
 		while(true)
 		{
 			auto const span_to_read = buffer.span_to_read();
