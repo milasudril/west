@@ -110,9 +110,12 @@ namespace west::io_adapter
 		ErrorCodeMapper&& map_error_code,
 		buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
 	{
-		while(bytes_left != 0)
+		while(true)
 		{
-			auto const span_to_read = buffer.span_to_read(bytes_left);
+			auto const span_to_read = buffer.span_to_read();
+			if(std::size(span_to_read) == 0 && bytes_left == 0)
+			{ return map_error_code(); }
+
 			auto const write_result = write(span_to_read);
 			buffer.consume_elements(write_result.bytes_written);
 
@@ -130,7 +133,6 @@ namespace west::io_adapter
 				{ return map_error_code(read_result.ec); }
 			}
 		}
-		return map_error_code();
 	}
 }
 #endif
