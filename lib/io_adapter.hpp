@@ -87,10 +87,12 @@ namespace west::io_adapter
 		T* m_end;
 	};
 
-	template<read_function R, write_function W, error_code_mapper M, size_t BufferSize>
+	template<read_function R, write_function W, class ErrorCodeMapper, size_t BufferSize>
+	requires(error_code_mapper<ErrorCodeMapper, decltype(std::declval(R{})(std::span<char>{}))>
+	&& error_code_mapper<ErrorCodeMapper, decltype(std::declval(W{})(std::span<char>{}))>)
 	auto transfer_data(R&& read,
 		W&& write,
-		M&& map_error_code,
+		ErrorCodeMapper&& map_error_code,
 		buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
 	{
 		while(bytes_left != 0)
