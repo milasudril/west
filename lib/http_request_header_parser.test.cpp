@@ -9,7 +9,7 @@ TESTCASE(west_http_request_header_parser_errcode_to_string)
 	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::completed),
 		std::string_view{"Completed"});
 	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::more_data_needed),
-		std::string_view{"More data needed"});
+		std::string_view{"Header truncated"});
 	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_request_method),
 		std::string_view{"Bad request method"});
 	EXPECT_EQ(to_string(west::http::req_header_parser_error_code::bad_request_target),

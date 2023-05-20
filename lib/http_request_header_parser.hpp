@@ -39,7 +39,7 @@ namespace west::http
 				return "Completed";
 
 			case req_header_parser_error_code::more_data_needed:
-				return "More data needed";
+				return "Header truncated";
 
 			case req_header_parser_error_code::bad_request_method:
 				return "Bad request method";
@@ -363,7 +363,10 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				if(ch_in == '\n')
 				{ return req_header_parse_result{ptr, req_header_parser_error_code::completed}; }
 				else
-				{ return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed}; }
+				{
+					puts("linefeed");
+					return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed};
+				}
 		}
 	}
 }

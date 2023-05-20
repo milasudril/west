@@ -12,7 +12,9 @@ namespace west::http
 	class read_request_header
 	{
 	public:
-		read_request_header(size_t max_header_size = 65536):m_bytes_to_read{max_header_size}{}
+		explicit read_request_header(size_t max_header_size = 65536):
+			m_bytes_to_read{max_header_size}
+		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
@@ -29,7 +31,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-	req_header_parser_error_code last_parse_error{};
+
 	return transfer_data(
 		[&src = session.connection](std::span<char> buffer){
 			return src.read(buffer);
@@ -45,16 +47,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			return parse_result{static_cast<size_t>(res.ptr - std::begin(buffer)), res.ec};
 		},
 		overload{
-			[&last_parse_error](io::operation_result res){
+			[](io::operation_result res){
 				switch(res)
 				{
 					case io::operation_result::completed:
 						return session_state_response{
-							.status = last_parse_error != req_header_parser_error_code::completed?
-								 session_state_status::client_error_detected
-								:session_state_status::completed,
+							.status = session_state_status::client_error_detected,
 							.http_status = status::bad_request,
-							.error_message = make_unique_cstr(to_string(last_parse_error))
+							.error_message = make_unique_cstr(to_string(req_header_parser_error_code::more_data_needed))
 						};
 					case io::operation_result::object_is_still_ready:
 						abort();
@@ -87,7 +87,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 							return session_state_response{
 								.status = session_state_status::client_error_detected,
 								.http_status = status::http_version_not_supported,
-								.error_message = make_unique_cstr("Server only supports HTTP version 1.1")
+								.error_message = make_unique_cstr("This web server only supports HTTP version 1.1")
 							};
 						}
 
@@ -108,13 +108,11 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						};
 				}
 			},
-			[&last_parse_error](){
+			[this](){
 				return session_state_response{
-					.status = last_parse_error != req_header_parser_error_code::completed?
-							session_state_status::client_error_detected
-						:session_state_status::completed,
-					.http_status = status::bad_request,
-					.error_message = make_unique_cstr(to_string(last_parse_error))
+					.status = session_state_status::client_error_detected,
+					.http_status = m_bytes_to_read == 0? status::request_entity_too_large : status::bad_request,
+					.error_message = make_unique_cstr(to_string(req_header_parser_error_code::more_data_needed))
 				};
 			}
 		},
