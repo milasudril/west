@@ -2,6 +2,7 @@
 #define WEST_HTTP_REQUEST_PROCESSOR_HPP
 
 #include "./http_request_state_transitions.hpp"
+#include "./io_adapter.hpp"
 
 namespace west::http
 {
@@ -69,7 +70,7 @@ namespace west::http
 		std::unique_ptr<buffer_type> m_recv_buffer;
 		std::unique_ptr<buffer_type> m_send_buffer;
 
-		using buffer_span = io::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
+		using buffer_span = io_adapter::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
 		std::array<buffer_span, 2> m_buff_spans;
 	};
 }

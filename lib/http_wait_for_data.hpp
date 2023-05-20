@@ -2,6 +2,7 @@
 #define WEST_HTTP_WAIT_FOR_DATA_HPP
 
 #include "./io_interfaces.hpp"
+#include "./io_adapter.hpp"
 #include "./http_request_handler.hpp"
 #include "./http_session.hpp"
 #include "./http_request_header_parser.hpp"
@@ -12,14 +13,14 @@ namespace west::http
 	{
 	public:
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 	};
 }
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::wait_for_data::operator()(
-	io::buffer_span<char, BufferSize>& buffer,
+	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
 	if(std::size(buffer.span_to_read()) != 0)

@@ -2,6 +2,7 @@
 #define WEST_HTTP_READ_REQUEST_BODY_HPP
 
 #include "./io_interfaces.hpp"
+#include "./io_adapter.hpp"
 #include "./http_request_handler.hpp"
 #include "./http_session.hpp"
 #include "./utils.hpp"
@@ -16,7 +17,7 @@ namespace west::http
 		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
 	private:
@@ -26,7 +27,7 @@ namespace west::http
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_body::operator()(
-	io::buffer_span<char, BufferSize>& buffer,
+	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
 	while(m_content_length != 0)

@@ -1,9 +1,9 @@
 #ifndef WEST_IO_INTERFACES_HPP
 #define WEST_IO_INTERFACES_HPP
 
-#include "./io_buffer_span.hpp"
-
 #include <concepts>
+#include <cstddef>
+#include <span>
 
 namespace west::io
 {
