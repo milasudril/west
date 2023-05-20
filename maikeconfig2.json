@@ -35,6 +35,7 @@
                             "-Wextra",
                             "-Werror",
                             "-Wconversion",
+                            "-Wswitch-enum",
                             "-Wno-psabi",
                             "-I.",
                             "-fconcepts-diagnostics-depth=3"

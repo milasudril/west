@@ -29,101 +29,98 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-#if 0
-	auto result = transfer_data(
+	req_header_parser_error_code last_parse_error{};
+	return transfer_data(
 		[&src = session.connection](std::span<char> buffer){
 			return src.read(buffer);
 		},
 		[&req_header_parser = m_req_header_parser](std::span<char const> buffer){
-			return req_header_parser.parse(buffer);
+			struct parse_result
+			{
+				size_t bytes_written;
+				req_header_parser_error_code ec;
+			};
+
+			auto res = req_header_parser.parse(buffer);
+			return parse_result{static_cast<size_t>(res.ptr - std::begin(buffer)), res.ec};
 		},
-		[](auto){},
-		buffer,
-		m_bytes_to_read
-	);
-
-	return session_state_response{
-		.status = session_state_status::client_error_detected,
-		.http_status = status::bad_request,
-		.error_message = nullptr //make_unique_cstr(to_string(parse_result.ec))
-	};
-#else
-	while(true)
-	{
-		auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
-		buffer.consume_elements(parse_result.ptr - std::begin(buffer.span_to_read()));
-		switch(parse_result.ec)
-		{
-			case req_header_parser_error_code::completed:
-			{
-				auto header = m_req_header_parser.take_result();
-				if(header.request_line.http_version != version{1, 1})
-				{
-					return session_state_response{
-						.status = session_state_status::client_error_detected,
-						.http_status = status::http_version_not_supported,
-						.error_message = make_unique_cstr("Server only supports HTTP version 1.1")
-					};
-				}
-
-				auto res = session.request_handler.finalize_state(header);
-				session.request_header = std::move(header);
-				return session_state_response{
-					.status = is_client_error(res.http_status) ?
-						session_state_status::client_error_detected : session_state_status::completed,
-					.http_status = res.http_status,
-					.error_message = std::move(res.error_message)
-				};
-			}
-
-			case req_header_parser_error_code::more_data_needed:
-			{
-				auto const read_result = session.connection.read(buffer.span_to_write());
-				buffer.reset_with_new_length(read_result.bytes_read);
-
-				switch(read_result.ec)
+		overload{
+			[&last_parse_error](io::operation_result res){
+				switch(res)
 				{
 					case io::operation_result::completed:
-						// The parser needs more data
-						// We do not have any new data
-						// This is a client error
 						return session_state_response{
-							.status = session_state_status::client_error_detected,
+							.status = last_parse_error != req_header_parser_error_code::completed?
+								 session_state_status::client_error_detected
+								:session_state_status::completed,
 							.http_status = status::bad_request,
-							.error_message = make_unique_cstr(to_string(parse_result.ec))
+							.error_message = make_unique_cstr(to_string(last_parse_error))
 						};
-
 					case io::operation_result::object_is_still_ready:
-						break;
-
+						abort();
 					case io::operation_result::operation_would_block:
-						// Suspend operation until we are waken up again
 						return session_state_response{
 							.status = session_state_status::more_data_needed,
 							.http_status = status::ok,
 							.error_message = nullptr
 						};
-
 					case io::operation_result::error:
 						return session_state_response{
 							.status = session_state_status::io_error,
 							.http_status = status::internal_server_error,
 							.error_message = make_unique_cstr("I/O error")
 						};
+					default:
+						__builtin_unreachable();
 				}
+			},
+			[this, &session](req_header_parser_error_code ec){
+				switch(ec)
+				{
+					case req_header_parser_error_code::more_data_needed:
+						abort();
+					case req_header_parser_error_code::completed:
+					{
+						auto header = m_req_header_parser.take_result();
+						if(header.request_line.http_version != version{1, 1})
+						{
+							return session_state_response{
+								.status = session_state_status::client_error_detected,
+								.http_status = status::http_version_not_supported,
+								.error_message = make_unique_cstr("Server only supports HTTP version 1.1")
+							};
+						}
 
-				break;
-			}
-
-			default:
+						auto res = session.request_handler.finalize_state(header);
+						session.request_header = std::move(header);
+						return session_state_response{
+							.status = is_client_error(res.http_status) ?
+								session_state_status::client_error_detected : session_state_status::completed,
+							.http_status = res.http_status,
+							.error_message = std::move(res.error_message)
+						};
+					}
+					default:
+						return session_state_response{
+							.status = session_state_status::client_error_detected,
+							.http_status = status::bad_request,
+							.error_message = make_unique_cstr(to_string(ec))
+						};
+				}
+			},
+			[&last_parse_error](){
 				return session_state_response{
-					.status = session_state_status::client_error_detected,
+					.status = last_parse_error != req_header_parser_error_code::completed?
+							session_state_status::client_error_detected
+						:session_state_status::completed,
 					.http_status = status::bad_request,
-					.error_message = make_unique_cstr(to_string(parse_result.ec))
+					.error_message = make_unique_cstr(to_string(last_parse_error))
 				};
-		}
-	}
-#endif
+			}
+		},
+		buffer,
+		m_bytes_to_read
+	);
 }
 
 #endif
