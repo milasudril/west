@@ -12,7 +12,7 @@ namespace west::http
 	class read_request_header
 	{
 	public:
-		read_request_header():m_bytes_to_read{65536}{}
+		read_request_header(size_t max_header_size = 65536):m_bytes_to_read{max_header_size}{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
