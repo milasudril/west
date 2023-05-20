@@ -453,3 +453,51 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 	EXPECT_EQ(bytes_to_read, 30);
 	EXPECT_EQ(output_buffer, str);
 }
+
+TESTCASE(west_io_adapter_transfer_data_no_pending_data_and_continue_early_eof)
+{
+	static constexpr std::string_view str{"Aenean blandit erat nec odio congue, eu finibus nunc gravida"};
+	std::array<char, std::size(str)> buffer{};
+
+	west::io_adapter::buffer_span span{buffer};
+
+	auto bytes_to_read = (3*std::size(buffer))/2;
+	std::string output_buffer;
+
+	auto res = transfer_data([
+			src_ptr = std::data(str),
+			strlen = std::size(str)
+		](std::span<char> buffer) mutable {
+			auto bytes_to_read =std::min(static_cast<size_t>(13), strlen);
+			if(bytes_to_read == 0)
+			{ return read_result{0, read_error::exit}; }
+			std::copy_n(src_ptr, bytes_to_read, std::begin(buffer));
+			strlen -= bytes_to_read;
+			src_ptr += bytes_to_read;
+			return read_result{bytes_to_read, read_error::keep_going};
+		},
+		[&output_buffer](std::span<char const> buffer){
+			if(std::size(buffer) == 0)
+			{ return write_result{0,  write_error::keep_going}; }
+
+			auto bytes_to_write = std::min(static_cast<size_t>(23), std::size(buffer));
+			std::copy_n(std::data(buffer), bytes_to_write, std::back_inserter(output_buffer));
+			return write_result{bytes_to_write,  write_error::keep_going};
+		},
+		west::overload{[](){return retval::exit_at_end_of_buffer;},
+			[](read_error ec){
+				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
+			},
+			[](write_error ec){
+				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
+			}
+		},
+		span,
+		bytes_to_read);
+
+	EXPECT_EQ(res, retval::exit_by_read);
+	EXPECT_EQ(std::size(span.span_to_read()), 0);
+	EXPECT_EQ(std::size(span.span_to_write()), std::size(buffer));
+	EXPECT_EQ(bytes_to_read, 30);
+	EXPECT_EQ(output_buffer, str);
+}

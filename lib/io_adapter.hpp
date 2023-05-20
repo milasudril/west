@@ -112,14 +112,6 @@ namespace west::io_adapter
 	{
 		while(bytes_to_read != 0)
 		{
-			auto const span_to_read = buffer.span_to_read(bytes_to_read);
-			auto const write_result = write(span_to_read);
-			buffer.consume_elements(write_result.bytes_written);
-			bytes_to_read -= write_result.bytes_written;
-
-			if(should_return(write_result.ec) || write_result.bytes_written == 0)
-			{ return map_error_code(write_result.ec); }
-
 			if(std::size(buffer.span_to_read()) == 0)
 			{
 				auto span_to_write = buffer.span_to_write();
@@ -128,6 +120,16 @@ namespace west::io_adapter
 
 				if(should_return(read_result.ec) || read_result.bytes_read == 0)
 				{ return map_error_code(read_result.ec); }
+			}
+			else
+			{
+				auto const span_to_read = buffer.span_to_read(bytes_to_read);
+				auto const write_result = write(span_to_read);
+				buffer.consume_elements(write_result.bytes_written);
+				bytes_to_read -= write_result.bytes_written;
+
+				if(should_return(write_result.ec) || write_result.bytes_written == 0)
+				{ return map_error_code(write_result.ec); }
 			}
 		}
 		return map_error_code();
