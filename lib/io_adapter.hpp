@@ -67,7 +67,7 @@ namespace west::io_adapter
 
 		void reset_with_new_length(size_t length)
 		{
-			assert(length < BufferSize);
+			assert(length <= BufferSize);
 			m_begin = m_start;
 			m_end = m_start + length;
 		}
@@ -108,34 +108,29 @@ namespace west::io_adapter
 	auto transfer_data(R&& read,
 		W&& write,
 		ErrorCodeMapper&& map_error_code,
-		buffer_span<char, BufferSize>& buffer, size_t& bytes_left)
+		buffer_span<char, BufferSize>& buffer, size_t& bytes_to_read)
 	{
-		if(bytes_left == 0)
-		{ return map_error_code(); }
-
-		while(true)
+		while(bytes_to_read != 0)
 		{
-			auto const span_to_read = buffer.span_to_read();
-			if(std::size(span_to_read) == 0 && bytes_left == 0)
-			{ return map_error_code(); }
-
+			auto const span_to_read = buffer.span_to_read(bytes_to_read);
 			auto const write_result = write(span_to_read);
 			buffer.consume_elements(write_result.bytes_written);
+			bytes_to_read -= write_result.bytes_written;
 
-			if(should_return(write_result.ec))
+			if(should_return(write_result.ec) || write_result.bytes_written == 0)
 			{ return map_error_code(write_result.ec); }
 
-			if(std::size(buffer.span_to_read()) == 0 && bytes_left != 0)
+			if(std::size(buffer.span_to_read()) == 0)
 			{
-				auto span_to_write = buffer.span_to_write(bytes_left);
+				auto span_to_write = buffer.span_to_write();
 				auto const read_result = read(span_to_write);
 				buffer.reset_with_new_length(read_result.bytes_read);
-				bytes_left -= read_result.bytes_read;
 
-				if(should_return(read_result.ec))
+				if(should_return(read_result.ec) || read_result.bytes_read == 0)
 				{ return map_error_code(read_result.ec); }
 			}
 		}
+		return map_error_code();
 	}
 }
 #endif
