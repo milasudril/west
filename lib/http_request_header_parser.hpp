@@ -83,6 +83,11 @@ namespace west::http
 		req_header_parser_error_code ec;
 	};
 
+	constexpr bool should_return(req_header_parser_error_code ec)
+	{
+		return ec != req_header_parser_error_code::more_data_needed;
+	}
+
 	class request_header_parser
 	{
 	public:
