@@ -96,7 +96,7 @@ namespace
 
 	struct content_proc_result
 	{
-		char const* ptr;
+		size_t bytes_written;
 		test_result ec;
 	};
 
@@ -144,12 +144,11 @@ namespace
 
 		}
 
-
 		auto process_request_content(std::span<char const> buffer)
 		{
 			request_body.insert(std::end(request_body), std::begin(buffer), std::end(buffer));
 			return content_proc_result{
-				.ptr = std::data(buffer) + std::size(buffer),
+				.bytes_written = std::size(buffer),
 				.ec = test_result::ok
 			};
 		}

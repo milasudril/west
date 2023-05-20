@@ -23,7 +23,7 @@ namespace west::http
 	template<class T>
 	concept process_request_content_result = requires(T x)
 	{
-		{x.ptr} -> std::convertible_to<char const*>;
+		{x.bytes_written} -> std::same_as<size_t&>;
 		{x.ec} -> error_code;
 	};
 
