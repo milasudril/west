@@ -12,12 +12,15 @@ namespace west::http
 	class read_request_header
 	{
 	public:
+		read_request_header():m_bytes_to_read{65536}{}
+
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
 	private:
 		request_header_parser m_req_header_parser;
+		size_t m_bytes_to_read;
 	};
 }
 
@@ -26,6 +29,25 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
+#if 0
+	auto result = transfer_data(
+		[&src = session.connection](std::span<char> buffer){
+			return src.read(buffer);
+		},
+		[&req_header_parser = m_req_header_parser](std::span<char const> buffer){
+			return req_header_parser.parse(buffer);
+		},
+		[](auto){},
+		buffer,
+		m_bytes_to_read
+	);
+
+	return session_state_response{
+		.status = session_state_status::client_error_detected,
+		.http_status = status::bad_request,
+		.error_message = nullptr //make_unique_cstr(to_string(parse_result.ec))
+	};
+#else
 	while(true)
 	{
 		auto const parse_result = m_req_header_parser.parse(buffer.span_to_read());
@@ -101,6 +123,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				};
 		}
 	}
+#endif
 }
 
 #endif
