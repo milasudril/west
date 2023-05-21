@@ -35,7 +35,7 @@ namespace west::http
 						m_state = make_state_handler(m_state, m_session.request_header, m_session.response_header);
 						break;
 
-					case session_state_status::connection_closed_as_expected:
+					case session_state_status::connection_closed:
 						return request_processor_status::completed;
 
 					case session_state_status::more_data_needed:

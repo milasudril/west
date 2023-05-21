@@ -52,18 +52,21 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				{
 					case io::operation_result::completed:
 						return session_state_response{
-							.status = session_state_status::client_error_detected,
-							.http_status = status::bad_request,
-							.error_message = make_unique_cstr("Client claims there is more data to read")
+							.status = session_state_status::connection_closed,
+							.http_status = status::ok,
+							.error_message = nullptr
 						};
+
 					case io::operation_result::object_is_still_ready:
 						abort();
+
 					case io::operation_result::operation_would_block:
 						return session_state_response{
 							.status = session_state_status::more_data_needed,
 							.http_status = status::ok,
 							.error_message = nullptr
 						};
+
 					case io::operation_result::error:
 						return session_state_response{
 							.status = session_state_status::io_error,

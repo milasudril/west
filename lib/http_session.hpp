@@ -11,7 +11,7 @@ namespace west::http
 	enum class session_state_status
 	{
 		completed,
-		connection_closed_as_expected,
+		connection_closed,
 		more_data_needed,
 		client_error_detected,
 		io_error

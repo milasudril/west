@@ -15,8 +15,7 @@ namespace west::http
 	{
 	public:
 		explicit write_response_header(response_header const& resp_header):
-			m_serializer{resp_header},
-			m_saved_serializer_ec{resp_header_serializer_error_code::more_data_needed}
+			m_serializer{resp_header}
 		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
@@ -25,7 +24,6 @@ namespace west::http
 
 	private:
 		response_header_serializer m_serializer;
-		resp_header_serializer_error_code m_saved_serializer_ec;
 	};
 }
 
@@ -50,10 +48,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			return dest.write(buffer);
 		},
 		overload{
-			[&saved_ec = m_saved_serializer_ec,
-			 &buffer = std::as_const(buffer)](resp_header_serializer_error_code ec){
+			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code ec){
 				assert(ec == resp_header_serializer_error_code::completed);
-				saved_ec = ec;
 				return session_state_response{
 					.status = std::size(buffer.span_to_read()) == 0?
 						session_state_status::completed : session_state_status::more_data_needed,
@@ -61,29 +57,15 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					.error_message = nullptr
 				};
 			},
-			[&saved_ec = m_saved_serializer_ec](io::operation_result res){
+			[](io::operation_result res){
 				switch(res)
 				{
 					case io::operation_result::completed:
-					{
-						if(saved_ec == resp_header_serializer_error_code::completed) [[likely]]
-						{
-							// Return OK, since we do not know anything about the response body
-							return session_state_response{
-								.status = session_state_status::completed,
-								.http_status = status::ok,
-								.error_message = nullptr
-							};
-						}
-						else
-						{
-							return session_state_response{
-								.status = session_state_status::io_error,
-								.http_status = status::internal_server_error,
-								.error_message = make_unique_cstr("I/O error")
-							};
-						}
-					}
+						return session_state_response{
+							.status = session_state_status::connection_closed,
+							.http_status = status::ok,
+							.error_message = nullptr
+						};
 
 					case io::operation_result::object_is_still_ready:
 						abort();

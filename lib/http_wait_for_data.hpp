@@ -41,7 +41,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		{
 			case io::operation_result::completed:
 				return session_state_response{
-					.status = session_state_status::connection_closed_as_expected,
+					.status = session_state_status::connection_closed,
 					.http_status = status::ok,
 					.error_message = nullptr
 				};
