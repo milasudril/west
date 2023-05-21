@@ -31,7 +31,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-
 	return transfer_data(
 		[&src = session.connection](std::span<char> buffer){
 			return src.read(buffer);

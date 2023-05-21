@@ -47,36 +47,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
 				};
 			},
-			[](io::operation_result res){
-				switch(res)
-				{
-					case io::operation_result::completed:
-						return session_state_response{
-							.status = session_state_status::connection_closed,
-							.http_status = status::ok,
-							.error_message = nullptr
-						};
-
-					case io::operation_result::object_is_still_ready:
-						abort();
-
-					case io::operation_result::operation_would_block:
-						return session_state_response{
-							.status = session_state_status::more_data_needed,
-							.http_status = status::ok,
-							.error_message = nullptr
-						};
-
-					case io::operation_result::error:
-						return session_state_response{
-							.status = session_state_status::io_error,
-							.http_status = status::internal_server_error,
-							.error_message = make_unique_cstr("I/O error")
-						};
-					default:
-						__builtin_unreachable();
-				}
-			},
+			[](io::operation_result res){ return make_write_response(res); },
 			[]() {
 				return session_state_response{
 					.status = session_state_status::completed,
