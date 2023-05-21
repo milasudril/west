@@ -51,14 +51,16 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					return to_string(req_header_parser_error_code::more_data_needed);
 				});
 			},
-			[this, &session](req_header_parser_error_code ec){
+			[&req_header_parser = m_req_header_parser, &session](req_header_parser_error_code ec){
 				switch(ec)
 				{
+				// GCOVR_EXCL_START
 					case req_header_parser_error_code::more_data_needed:
 						abort();
+				// GCOVR_EXCL_STOP
 					case req_header_parser_error_code::completed:
 					{
-						auto header = m_req_header_parser.take_result();
+						auto header = req_header_parser.take_result();
 						if(header.request_line.http_version != version{1, 1})
 						{
 							return session_state_response{
@@ -85,10 +87,10 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						};
 				}
 			},
-			[this](){
+			[](){
 				return session_state_response{
 					.status = session_state_status::client_error_detected,
-					.http_status = m_bytes_to_read == 0? status::request_entity_too_large : status::bad_request,
+					.http_status = status::request_entity_too_large,
 					.error_message = make_unique_cstr(to_string(req_header_parser_error_code::more_data_needed))
 				};
 			}
