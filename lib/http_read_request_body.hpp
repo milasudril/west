@@ -44,7 +44,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			[](auto ec){
 				auto const keep_going = can_continue(ec);
 				return session_state_response{
-					.status = keep_going ?
+					.status = keep_going?
 						session_state_status::more_data_needed :
 						session_state_status::client_error_detected,
 					.http_status = keep_going? status::ok : status::bad_request,
@@ -53,11 +53,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			},
 			[&session](){
 				session.response_header = response_header{};
-				session.response_header.status_line.http_version = version{1, 1};
 				auto res = session.request_handler.finalize_state(session.response_header.fields);
+
+				// TODO: May need to set these always when starting to generate a response
+				session.response_header.status_line.http_version = version{1, 1};
 				session.response_header.status_line.status_code = res.http_status;
 				session.response_header.status_line.reason_phrase = to_string(res.http_status);
 
+				// TODO: What if request handler want to push some kind of Internal Server Error?
 				return session_state_response{
 					.status = is_client_error(res.http_status) ?
 						session_state_status::client_error_detected : session_state_status::completed,

@@ -1,104 +1,43 @@
-//	{"target":{"name":"http_read_request_body.test"}}"
+//@	{"target":{"name":"http_read_request_body.test"}}"
 
 #include "./http_read_request_body.hpp"
 
+#include "stubs/data_source.hpp"
+
 #include <testfwk/testfwk.hpp>
-#include <random>
 
 namespace
 {
-	class data_source
-	{
-	public:
-		explicit data_source(std::string_view buffer):
-			m_buffer{buffer},
-			m_ptr{std::begin(buffer)},
-			m_io_error{false}
-		{}
-
-		auto read(std::span<char> output_buffer)
-		{
-			if(m_io_error)
-			{
-				return west::io::read_result{
-					.bytes_read = 0,
-					.ec = west::io::operation_result::error
-				};
-			}
-
-			auto const remaining = std::size(m_buffer) - (m_ptr - std::begin(m_buffer));
-
-			std::bernoulli_distribution io_should_block{0.25};
-			if(remaining != 0 && io_should_block(m_rng))
-			{
-				return west::io::read_result{
-					.bytes_read = 0,
-					.ec = west::io::operation_result::operation_would_block
-				};
-			}
-
-			auto bytes_to_read =std::min(std::min(std::size(output_buffer), remaining), static_cast<size_t>(23));
-			std::copy_n(m_ptr, remaining, std::begin(output_buffer));
-			m_ptr += bytes_to_read;
-			return west::io::read_result{
-				.bytes_read = bytes_to_read,
-				.ec = bytes_to_read == 0 ?
-					west::io::operation_result::completed:
-					west::io::operation_result::object_is_still_ready
-			};
-		}
-
-		auto write(std::span<char const>)
-		{
-			return west::io::write_result{
-				.bytes_written = 0,
-				.ec = west::io::operation_result::error
-			};
-		}
-
-		void stop_reading()
-		{ m_ptr = std::end(m_buffer); }
-
-		char const* get_pointer() const { return m_ptr; }
-
-		auto get_data() const { return m_buffer; }
-
-		void enable_io_error() { m_io_error = true; }
-
-	private:
-		std::string_view m_buffer;
-		char const* m_ptr;
-		std::minstd_rand m_rng;
-		bool m_io_error;
-	};
-
-	enum class test_result{ok, failure};
+	enum class test_result{completed, is_blocked, error};
 
 	constexpr bool should_return(test_result res)
-	{
-		return res != test_result::ok;
-	}
+	{ return res != test_result::completed; }
 
 	constexpr char const* to_string(test_result res)
 	{
 		switch(res)
 		{
-			case test_result::ok:
-				return "Ok";
-			case test_result::failure:
-				return "Failure";
+			case test_result::completed:
+				return "Completed";
+			case test_result::is_blocked:
+				return "Is blocked";
+			case test_result::error:
+				return "Error";
 		}
 		__builtin_unreachable();
 	}
 
+	constexpr bool can_continue(test_result res)
+	{ return res == test_result::is_blocked; }
+
 	struct result
 	{
-		char const* ptr;
+		size_t bytes_written;
 		test_result ec;
 	};
 
 
-	template<test_result Result>
+	template<test_result Result, bool RejInFinalize = false>
 	struct request_handler
 	{
 		auto process_request_content(std::span<char const> buffer)
@@ -106,16 +45,20 @@ namespace
 			data_processed.insert(std::end(data_processed), std::begin(buffer), std::end(buffer));
 
 			return result{
-				.ptr = std::data(buffer) + std::size(buffer),
+				.bytes_written = std::size(buffer),
 				.ec = Result
 			};
 		}
 
-		auto finalize_state(west::http::read_request_body_tag) const
+		auto finalize_state(west::http::field_map& resp_header_fields) const
 		{
+			resp_header_fields.append("Kaka", "Foobar");
+
 			return west::http::session_state_response{
 				.status = west::http::session_state_status::completed,
-				.http_status = west::http::status::accepted,
+				.http_status = RejInFinalize?
+					west::http::status::i_am_a_teapot:
+					west::http::status::accepted,
 				.error_message = west::make_unique_cstr("Hej")
 			};
 		}
@@ -127,140 +70,162 @@ namespace
 TESTCASE(http_read_request_body_read_all_data)
 {
 	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
+	west::io_adapter::buffer_span buff_span{buffer};
 
-	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
-"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
-"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
-"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
-"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
-"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
-"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
-"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
-"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
-"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
-"enim."}};
+	west::stubs::data_source src{std::string_view{
+"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
+"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
+"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
+"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
+"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
+"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
+"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla eget,"
+" luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. Pellentesque "
+" habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Lorem ipsum "
+" dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim.Some additional data."}};
 
-	west::http::session session{src, request_handler<test_result::ok>{}, west::http::request_header{}};
-	west::http::read_request_body reader{src.get_data().size()};
+	west::http::session session{src,
+		request_handler<test_result::completed>{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+	auto const message_size = src.get_data().size() - 21;
+	west::http::read_request_body reader{message_size};
 
-	while(true)
-	{
-		auto res = reader(buffer_view, session);
-		if(res.status != west::http::session_state_status::more_data_needed)
-		{
-			EXPECT_EQ(res.status, west::http::session_state_status::completed);
-			EXPECT_EQ(res.http_status, west::http::status::accepted);
-			EXPECT_EQ(res.error_message.get(), std::string_view{"Hej"});
-			EXPECT_EQ(session.request_handler.data_processed, src.get_data());
-			break;
-		}
-	}
+	auto res = reader(buff_span, session);
+	EXPECT_EQ(res.status, west::http::session_state_status::completed);
+	EXPECT_EQ(res.http_status, west::http::status::accepted);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Hej"});
+	EXPECT_EQ(session.response_header.status_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(session.response_header.status_line.reason_phrase, "Accepted");
+	EXPECT_EQ(session.response_header.fields.find("Kaka")->second, "Foobar");
+	EXPECT_EQ(session.request_handler.data_processed, src.get_data().substr(0, message_size));
+	EXPECT_EQ(buff_span.span_to_read()[0], 'S');
 }
+
 
 TESTCASE(http_read_request_body_read_early_eof)
 {
 	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
+	west::io_adapter::buffer_span buff_span{buffer};
 
-	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
-"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
-"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
-"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
-"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
-"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
-"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
-"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
-"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
-"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
-"enim."}};
+	west::stubs::data_source src{std::string_view{
+"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
+"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
+"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
+"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
+"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
+"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
+"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla eget,"
+" luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. Pellentesque "
+" habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Lorem ipsum "
+" dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim."}};
 
-	west::http::session session{src, request_handler<test_result::ok>{}, west::http::request_header{}};
-	west::http::read_request_body reader{4*src.get_data().size()};
+	west::http::session session{src,
+		request_handler<test_result::completed>{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+	auto const message_size = src.get_data().size() + 23;
+	west::http::read_request_body reader{message_size};
 
-	while(true)
-	{
-		auto res = reader(buffer_view, session);
-		if(res.status != west::http::session_state_status::more_data_needed)
-		{
-			EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-			EXPECT_EQ(res.http_status, west::http::status::bad_request);
-			EXPECT_EQ(res.error_message.get(), std::string_view{"Client claims there is more data to read"});
-			EXPECT_EQ(session.request_handler.data_processed, src.get_data());
-			break;
-		}
-	}
+	auto res = reader(buff_span, session);
+	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
+	EXPECT_EQ(res.http_status, west::http::status::bad_request);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Client claims there is more data to read"});
 }
 
-
-TESTCASE(http_read_request_body_read_request_handler_rejects)
+TESTCASE(http_read_request_body_read_req_handler_fails_to_read)
 {
 	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
+	west::io_adapter::buffer_span buff_span{buffer};
 
-	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
-"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
-"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
-"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
-"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
-"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
-"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
-"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
-"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
-"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
-"enim."}};
+	west::stubs::data_source src{std::string_view{
+"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
+"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
+"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
+"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
+"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
+"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
+"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla eget,"
+" luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. Pellentesque "
+" habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Lorem ipsum "
+" dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim.Some additional data."}};
 
-	west::http::session session{src, request_handler<test_result::failure>{}, west::http::request_header{}};
-	west::http::read_request_body reader{src.get_data().size()};
+	west::http::session session{src,
+		request_handler<test_result::error>{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+	auto const message_size = src.get_data().size() - 21;
+	west::http::read_request_body reader{message_size};
 
-	while(true)
-	{
-		auto res = reader(buffer_view, session);
-		if(res.status != west::http::session_state_status::more_data_needed)
-		{
-			EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-			EXPECT_EQ(res.http_status, west::http::status::bad_request);
-			EXPECT_EQ(res.error_message.get(), std::string_view{"Failure"});
-			EXPECT_EQ(session.request_handler.data_processed, "");
-			break;
-		}
-	}
+	auto res = reader(buff_span, session);
+	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
+	EXPECT_EQ(res.http_status, west::http::status::bad_request);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Error"});
 }
 
-TESTCASE(http_read_request_body_io_error)
+TESTCASE(http_read_request_body_read_req_handler_blocks_when_reading)
 {
 	std::array<char, 4096> buffer{};
-	west::io::buffer_view buffer_view{buffer};
+	west::io_adapter::buffer_span buff_span{buffer};
 
-	data_source src{std::string_view{"Aenean at placerat tortor. Proin tristique sit amet elit vitae "
-"tristique. Vivamus pellentesque  imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam "
-"eu, sollicitudin risus. Orci  varius natoque penatibus et magnis dis parturient montes, nascetur "
-"ridiculus mus. In auctor iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor "
-"blandit libero, quis molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus "
-"augue. Pellentesque vel congue neque. Orci varius natoque penatibus et magnis dis parturient "
-"montes, nascetur ridiculus mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit "
-"ipsum, ultricies at nulla eget, luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere "
-"nunc semper at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac "
-"turpis egestas. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec quis efficitur "
-"enim."}};
+	west::stubs::data_source src{std::string_view{
+"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
+"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
+"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
+"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
+"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
+"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
+"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla eget,"
+" luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. Pellentesque "
+" habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Lorem ipsum "
+" dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim.Some additional data."}};
 
-	west::http::session session{src, request_handler<test_result::ok>{}, west::http::request_header{}};
-	west::http::read_request_body reader{src.get_data().size()};
-	size_t k = 0;
-	while(true)
-	{
-		if(k == 4)
-		{ session.connection.enable_io_error(); }
+	west::http::session session{src,
+		request_handler<test_result::is_blocked>{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+	auto const message_size = src.get_data().size() - 21;
+	west::http::read_request_body reader{message_size};
 
-		auto res = reader(buffer_view, session);
-		if(res.status != west::http::session_state_status::more_data_needed)
-		{
-			EXPECT_EQ(res.status, west::http::session_state_status::io_error);
-			EXPECT_EQ(res.http_status, west::http::status::internal_server_error);
-			EXPECT_EQ(res.error_message.get(), std::string_view{"I/O error"});
-			break;
-		}
+	auto res = reader(buff_span, session);
+	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
+	EXPECT_EQ(res.http_status, west::http::status::ok);
+	EXPECT_EQ(res.error_message.get(), nullptr);
+}
 
-		++k;
-	}
+TESTCASE(http_read_request_body_read_req_handler_rej_in_finalize)
+{
+	std::array<char, 4096> buffer{};
+	west::io_adapter::buffer_span buff_span{buffer};
+
+	west::stubs::data_source src{std::string_view{
+"Aenean at placerat tortor. Proin tristique sit amet elit vitae tristique. Vivamus pellentesque "
+"imperdiet iaculis. Phasellus vel elit convallis, vestibulum diam eu, sollicitudin risus. Orci "
+"varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In auctor "
+"iaculis augue, sit amet dapibus massa porta non. Vestibulum porttitor blandit libero, quis "
+"molestie velit finibus sed. Ut id ante dictum, dignissim elit id, rhoncus augue. Pellentesque vel "
+"congue neque. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus "
+"mus. Vivamus in augue at nisl luctus posuere sed in dui. Nunc elit ipsum, ultricies at nulla eget,"
+" luctus viverra purus. Aenean dignissim hendrerit ex, ut posuere nunc semper at. Pellentesque "
+" habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Lorem ipsum "
+" dolor sit amet, consectetur adipiscing elit. Donec quis efficitur enim.Some additional data."}};
+
+	west::http::session session{src,
+		request_handler<test_result::completed, true>{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+	auto const message_size = src.get_data().size() - 21;
+	west::http::read_request_body reader{message_size};
+
+	auto res = reader(buff_span, session);
+	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
+	EXPECT_EQ(res.http_status, west::http::status::i_am_a_teapot);
+	EXPECT_EQ(session.response_header.status_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(session.response_header.status_line.reason_phrase, "I am a teapot");
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Hej"});
 }

@@ -58,6 +58,8 @@ namespace west::stubs
 		void set_mode(mode new_mode)
 		{ m_mode = new_mode; }
 
+		auto get_data() const { return m_buffer; }
+
 
 	private:
 		std::string_view m_buffer;
