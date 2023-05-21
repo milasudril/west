@@ -66,12 +66,13 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				}
 			},
 			[](auto ec){
+				auto const keep_going = can_continue(ec);
 				return session_state_response{
-					.status = can_continue(ec) ?
+					.status = keep_going ?
 						session_state_status::more_data_needed :
 						session_state_status::client_error_detected,
-					.http_status = status::bad_request,
-					.error_message = make_unique_cstr(to_string(ec))
+					.http_status = keep_going? status::ok : status::bad_request,
+					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
 				};
 			},
 			[&session](){
