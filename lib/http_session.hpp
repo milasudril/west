@@ -3,6 +3,7 @@
 
 #include "./http_message_header.hpp"
 #include "./http_request_handler.hpp"
+#include "./io_interfaces.hpp"
 #include "./utils.hpp"
 
 #include <memory>
@@ -41,14 +42,18 @@ namespace west::http
 		switch(res)
 		{
 			case io::operation_result::completed:
+				// NOTE: Client have closed its "write" end of the socket. Its may "read" end may still
+				//       be open, and thus, it may be possible to respond with a HTTP 400 message.
 				return session_state_response{
 					.status = session_state_status::client_error_detected,
 					.http_status = status::bad_request,
 					.error_message = make_unique_cstr(std::forward<MsgSource>(at_conn_close_msg)())
 				};
 
+			// GCOVR_EXCL_START
 			case io::operation_result::object_is_still_ready:
 				return abort<session_state_response>();
+			// GCOVR_EXCL_STOP
 
 			case io::operation_result::operation_would_block:
 				return session_state_response{
@@ -63,8 +68,10 @@ namespace west::http
 					.http_status = status::internal_server_error,
 					.error_message = make_unique_cstr("I/O error")
 				};
+			// GCOVR_EXCL_START
 			default:
-				__builtin_unreachable();
+				__builtin_unreachable();  // LCOV_EXCL_LINE
+			// GCOVR_EXCL_STOP
 		}
 	}
 
@@ -79,8 +86,10 @@ namespace west::http
 					.error_message = nullptr
 				};
 
+			// GCOVR_EXCL_START
 			case io::operation_result::object_is_still_ready:
 				abort();
+			// GCOVR_EXCL_STOP
 
 			case io::operation_result::operation_would_block:
 				return session_state_response{
@@ -95,8 +104,10 @@ namespace west::http
 					.http_status = status::internal_server_error,
 					.error_message = make_unique_cstr("I/O error")
 				};
+			// GCOVR_EXCL_START
 			default:
 				__builtin_unreachable();
+ 			// GCOVR_EXCL_STOP
 		}
 	}
 }

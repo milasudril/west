@@ -1,4 +1,4 @@
-//@	{"target":{"name":"http_request_processor.test"}}
+//	{"target":{"name":"http_request_processor.test"}}
 
 #include "./http_request_processor.hpp"
 
