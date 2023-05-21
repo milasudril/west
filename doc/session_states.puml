@@ -1,0 +1,15 @@
+@startuml
+hide empty description
+[*] --> read_request_header
+
+read_request_header --> read_request_body
+
+read_request_body --> write_response_header
+
+write_response_header --> write_response_body
+
+write_response_body --> wait_for_data
+
+wait_for_data --> read_request_header
+
+@enduml

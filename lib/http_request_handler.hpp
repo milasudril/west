@@ -2,6 +2,7 @@
 #define WEST_HTTP_REQUEST_HANDLER_HPP
 
 #include "./http_message_header.hpp"
+#include "./io_adapter.hpp"
 
 #include <memory>
 
@@ -14,10 +15,11 @@ namespace west::http
 	};
 
 	template<class T>
-	concept error_code = requires(T x)
+	concept error_code = io_adapter::error_code<T> && requires(T x)
 	{
 		{to_string(x)} -> std::convertible_to<char const*>;
 		{should_return(x)} -> std::same_as<bool>;
+		{can_continue(x)} -> std::same_as<bool>;
 	};
 
 	template<class T>

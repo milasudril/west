@@ -82,6 +82,11 @@ namespace
 		return res != test_result::ok;
 	}
 
+	constexpr bool can_continue(test_result)
+	{
+		return false;
+	}
+
 	constexpr char const* to_string(test_result res)
 	{
 		switch(res)
