@@ -55,7 +55,11 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				};
 
 			case io::operation_result::operation_would_block:
-				break;
+				return session_state_response{
+					.status = session_state_status::more_data_needed,
+					.http_status = status::ok,
+					.error_message = nullptr
+				};
 
 			case io::operation_result::error:
 				return session_state_response{
