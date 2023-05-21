@@ -3,6 +3,7 @@
 
 #include "./http_message_header.hpp"
 #include "./http_request_handler.hpp"
+#include "./utils.hpp"
 
 #include <memory>
 
@@ -32,6 +33,40 @@ namespace west::http
 		enum status http_status;
 		std::unique_ptr<char[]> error_message;
 	};
+
+	template<class MsgSource>
+	auto make_read_response(io::operation_result res,
+		MsgSource&& at_conn_close_msg)
+	{
+		switch(res)
+		{
+			case io::operation_result::completed:
+				return session_state_response{
+					.status = session_state_status::client_error_detected,
+					.http_status = status::bad_request,
+					.error_message = make_unique_cstr(std::forward<MsgSource>(at_conn_close_msg)())
+				};
+
+			case io::operation_result::object_is_still_ready:
+				return abort<session_state_response>();
+
+			case io::operation_result::operation_would_block:
+				return session_state_response{
+					.status = session_state_status::more_data_needed,
+					.http_status = status::ok,
+					.error_message = nullptr
+				};
+
+			case io::operation_result::error:
+				return session_state_response{
+					.status = session_state_status::io_error,
+					.http_status = status::internal_server_error,
+					.error_message = make_unique_cstr("I/O error")
+				};
+			default:
+				__builtin_unreachable();
+		}
+	}
 }
 
 #endif

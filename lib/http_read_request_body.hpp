@@ -39,31 +39,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		},
 		overload{
 			[](io::operation_result res){
-				switch(res)
-				{
-					case io::operation_result::completed:
-						return session_state_response{
-							.status = session_state_status::client_error_detected,
-							.http_status = status::bad_request,
-							.error_message = make_unique_cstr("Client claims there is more data to read")
-						};
-					case io::operation_result::object_is_still_ready:
-						abort();
-					case io::operation_result::operation_would_block:
-						return session_state_response{
-							.status = session_state_status::more_data_needed,
-							.http_status = status::ok,
-							.error_message = nullptr
-						};
-					case io::operation_result::error:
-						return session_state_response{
-							.status = session_state_status::io_error,
-							.http_status = status::internal_server_error,
-							.error_message = make_unique_cstr("I/O error")
-						};
-					default:
-						__builtin_unreachable();
-				}
+				return make_read_response(res, [](){return "Client claims there is more data to read";});
 			},
 			[](auto ec){
 				auto const keep_going = can_continue(ec);
