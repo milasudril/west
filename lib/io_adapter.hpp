@@ -119,7 +119,7 @@ namespace west::io_adapter
 				buffer.reset_with_new_length(read_result.bytes_read);
 
 				if(should_return(read_result.ec) || read_result.bytes_read == 0)
-				{	return map_error_code(read_result.ec); }
+				{ return map_error_code(read_result.ec); }
 			}
 			else
 			{

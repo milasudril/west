@@ -18,19 +18,19 @@ namespace west::http
 			m_serializer{resp_header}
 		{}
 
-		template<io::data_source Source, class RequestHandler, size_t BufferSize>
+		template<io::data_sink Sink, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
-			session<Source, RequestHandler>& session);
+			session<Sink, RequestHandler>& session);
 
 	private:
 		response_header_serializer m_serializer;
 	};
 }
 
-template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
+template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::write_response_header::operator()(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
-	session<Source, RequestHandler>& session)
+	session<Sink, RequestHandler>& session)
 {
 	auto max_length = std::numeric_limits<size_t>::max();  // No limit in how much data we can write
 	return transfer_data(
@@ -50,15 +50,17 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		overload{
 			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code ec){
 				assert(ec == resp_header_serializer_error_code::completed);
+				assert(std::size(buffer.span_to_read()) == 0);
 				return session_state_response{
-					.status = std::size(buffer.span_to_read()) == 0?
-						session_state_status::completed : session_state_status::more_data_needed,
+					.status = session_state_status::completed,
 					.http_status = status::ok,
 					.error_message = nullptr
 				};
 			},
 			[](io::operation_result res){ return make_write_response(res); },
-			[](){return abort<session_state_response>();},
+		// GCOVR_EXCL_START
+			[](){return abort<session_state_response>();}
+		// GCOVR_EXCL_STOP
 		},
 		buffer,
 		max_length
