@@ -29,89 +29,62 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-	while(true)
-	{
-		auto span_to_read = buffer.span_to_read();
-		span_to_read = std::span{
-				std::begin(span_to_read),
-				std::min(m_bytes_to_write, std::size(span_to_read))
-		};
-
-		auto write_res = session.connection.write(span_to_read);
-		buffer.consume_elements(write_res.bytes_written);
-		m_bytes_to_write -= write_res.bytes_written;
-
-		if(std::size(buffer.span_to_read()) == 0)
-		{
-			auto span_to_write = buffer.span_to_write();
-			span_to_write = std::span{
-				std::begin(span_to_write),
-				std::min(m_bytes_to_write, std::size(span_to_write))
-			};
-
-			auto read_result = session.request_handler.read_response_content(span_to_write);
-			buffer.reset_with_new_length(read_result.ptr - std::data(span_to_write));
-			if(should_return(read_result.ec) ||
-				(m_bytes_to_write != 0 && std::size(buffer.span_to_read()) == 0))
-			{
+	return transfer_data(
+		[&req_handler = session.request_handler](std::span<char> buffer){
+			return req_handler.read_response_content(buffer);
+		},
+		[&dest = session.connection](std::span<char const> buffer) {
+			return dest.write(buffer);
+		},
+		overload{
+			[](auto ec) {
+				auto const keep_going = can_continue(ec);
 				return session_state_response{
-					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("Request handler has no data to deliver")
+					.status = keep_going ?
+						session_state_status::more_data_needed :
+						session_state_status::client_error_detected,
+					.http_status = keep_going? status::ok : status::bad_request,
+					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
 				};
-			}
-
-			if(std::size(buffer.span_to_read()) == 0)
-			{
+			},
+			[](io::operation_result res){
+				switch(res)
+				{
+					case io::operation_result::completed:
+						return session_state_response{
+							.status = session_state_status::client_error_detected,
+							.http_status = status::bad_request,
+							.error_message = make_unique_cstr("Client claims there is more data to read")
+						};
+					case io::operation_result::object_is_still_ready:
+						abort();
+					case io::operation_result::operation_would_block:
+						return session_state_response{
+							.status = session_state_status::more_data_needed,
+							.http_status = status::ok,
+							.error_message = nullptr
+						};
+					case io::operation_result::error:
+						return session_state_response{
+							.status = session_state_status::io_error,
+							.http_status = status::internal_server_error,
+							.error_message = make_unique_cstr("I/O error")
+						};
+					default:
+						__builtin_unreachable();
+				}
+			},
+			[]() {
 				return session_state_response{
 					.status = session_state_status::completed,
 					.http_status = status::ok,
 					.error_message = nullptr
 				};
 			}
-		}
-
-		switch(write_res.ec)
-		{
-			case io::operation_result::completed:
-			{
-				if(std::size(buffer.span_to_read()) == 0 && m_bytes_to_write == 0) [[likely]]
-				{
-					return session_state_response{
-						.status = session_state_status::completed,
-						.http_status = status::ok,
-						.error_message = nullptr
-					};
-				}
-				else
-				{
-					return session_state_response{
-						.status = session_state_status::io_error,
-						.http_status = status::internal_server_error,
-						.error_message = make_unique_cstr("Client disconnected")
-					};
-				}
-			}
-
-			case io::operation_result::object_is_still_ready:
-				break;
-
-			case io::operation_result::operation_would_block:
-				// Suspend operation until we are waken up again
-				return session_state_response{
-					.status = session_state_status::more_data_needed,
-					.http_status = status::ok,
-					.error_message = nullptr
-				};
-
-			case io::operation_result::error:
-				return session_state_response{
-					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("I/O error")
-				};
-		}
-	}
+		},
+		buffer,
+		m_bytes_to_write
+	);
 }
 
 #endif

@@ -32,7 +32,7 @@ namespace west::http
 	template<class T>
 	concept read_response_content_result = requires(T x)
 	{
-		{x.ptr} -> std::convertible_to<char*>;
+		{x.bytes_read} -> std::same_as<size_t&>;
 		{x.ec} -> error_code;
 	};
 

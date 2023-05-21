@@ -107,7 +107,7 @@ namespace
 
 	struct content_read_result
 	{
-		char* ptr;
+		size_t bytes_read;
 		test_result ec;
 	};
 
@@ -165,7 +165,7 @@ namespace
 			std::copy_n(read_ptr, bytes_to_read, std::data(buffer));
 			read_ptr += bytes_to_read;
 			return content_read_result{
-				.ptr = std::data(buffer) + bytes_to_read,
+				.bytes_read = bytes_to_read,
 				.ec = test_result::ok
 			};
 		}
