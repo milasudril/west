@@ -7,13 +7,16 @@
 #include "./http_session.hpp"
 #include "./http_response_header_serializer.hpp"
 
+#include <limits>
+
 namespace west::http
 {
 	class write_response_header
 	{
 	public:
 		explicit write_response_header(response_header const& resp_header):
-			m_serializer{resp_header}
+			m_serializer{resp_header},
+			m_saved_serializer_ec{resp_header_serializer_error_code::more_data_needed}
 		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
@@ -22,6 +25,7 @@ namespace west::http
 
 	private:
 		response_header_serializer m_serializer;
+		resp_header_serializer_error_code m_saved_serializer_ec;
 	};
 }
 
@@ -30,75 +34,82 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {
-	while(true)
-	{
-		auto write_res = session.connection.write(buffer.span_to_read());
-		buffer.consume_elements(write_res.bytes_written);
-		if(std::size(buffer.span_to_read()) == 0)
-		{
-			auto read_result = m_serializer.serialize(buffer.span_to_write());
-			buffer.reset_with_new_length(read_result.ptr - std::data(buffer.span_to_write()));
-
-			switch(read_result.ec)
+	auto max_length = std::numeric_limits<size_t>::max();  // No limit in how much data we can write
+	return transfer_data(
+		[this](std::span<char> buffer){
+			struct read_result
 			{
-				case resp_header_serializer_error_code::more_data_needed:
-					break;
+				size_t bytes_read;
+				resp_header_serializer_error_code ec;
+			};
 
-				case resp_header_serializer_error_code::completed:
-					//TODO: Should flush in next state
-					if(std::size(buffer.span_to_read()) == 0)
-					{
-						return session_state_response{
-							.status = session_state_status::completed,
-							.http_status = status::ok,
-							.error_message = nullptr
-						};
-					}
-			}
-		}
-
-		switch(write_res.ec)
-		{
-			case io::operation_result::completed:
-			{
-				if(std::size(buffer.span_to_read()) == 0) [[likely]]
-				{
-					// Return OK, since we do not know anything about the response body
-					return session_state_response{
-						.status = session_state_status::completed,
-						.http_status = status::ok,
-						.error_message = nullptr
-					};
-				}
-				else
-				{
-					return session_state_response{
-						.status = session_state_status::io_error,
-						.http_status = status::internal_server_error,
-						.error_message = make_unique_cstr("I/O error")
-					};
-				}
-			}
-
-			case io::operation_result::object_is_still_ready:
-				break;
-
-			case io::operation_result::operation_would_block:
-				// Suspend operation until we are waken up again
+			auto res = m_serializer.serialize(buffer);
+			return read_result{static_cast<size_t>(res.ptr - std::data(buffer)), res.ec};
+		},
+		[&dest = session.connection](std::span<char const> buffer){
+			return dest.write(buffer);
+		},
+		overload{
+			[&saved_ec = m_saved_serializer_ec,
+			 &buffer = std::as_const(buffer)](resp_header_serializer_error_code ec){
+				assert(ec == resp_header_serializer_error_code::completed);
+				saved_ec = ec;
 				return session_state_response{
-					.status = session_state_status::more_data_needed,
+					.status = std::size(buffer.span_to_read()) == 0?
+						session_state_status::completed : session_state_status::more_data_needed,
 					.http_status = status::ok,
 					.error_message = nullptr
 				};
+			},
+			[&saved_ec = m_saved_serializer_ec](io::operation_result res){
+				switch(res)
+				{
+					case io::operation_result::completed:
+					{
+						if(saved_ec == resp_header_serializer_error_code::completed) [[likely]]
+						{
+							// Return OK, since we do not know anything about the response body
+							return session_state_response{
+								.status = session_state_status::completed,
+								.http_status = status::ok,
+								.error_message = nullptr
+							};
+						}
+						else
+						{
+							return session_state_response{
+								.status = session_state_status::io_error,
+								.http_status = status::internal_server_error,
+								.error_message = make_unique_cstr("I/O error")
+							};
+						}
+					}
 
-			case io::operation_result::error:
-				return session_state_response{
-					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("I/O error")
-				};
-		}
-	}
+					case io::operation_result::object_is_still_ready:
+						abort();
+
+					case io::operation_result::operation_would_block:
+						return session_state_response{
+							.status = session_state_status::more_data_needed,
+							.http_status = status::ok,
+							.error_message = nullptr
+						};
+
+					case io::operation_result::error:
+						return session_state_response{
+							.status = session_state_status::io_error,
+							.http_status = status::internal_server_error,
+							.error_message = make_unique_cstr("I/O error")
+						};
+					default:
+						__builtin_unreachable();
+				}
+			},
+			[](){return abort<session_state_response>();},
+		},
+		buffer,
+		max_length
+	);
 }
 
 #endif

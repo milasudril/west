@@ -31,6 +31,9 @@ namespace west::http
 		bad_field_value
 	};
 
+	constexpr bool should_return(req_header_parser_error_code ec)
+	{ return ec != req_header_parser_error_code::more_data_needed; }
+
 	constexpr char const* to_string(req_header_parser_error_code ec)
 	{
 		switch(ec)
@@ -82,11 +85,6 @@ namespace west::http
 		InputSeqIterator ptr;
 		req_header_parser_error_code ec;
 	};
-
-	constexpr bool should_return(req_header_parser_error_code ec)
-	{
-		return ec != req_header_parser_error_code::more_data_needed;
-	}
 
 	class request_header_parser
 	{

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <charconv>
 #include <optional>
+#include <cstdlib>
 
 namespace west
 {
@@ -36,6 +37,13 @@ namespace west
 	{
 		using Args::operator() ...;
 	};
+
+	template<class ReturnType>
+	[[noreturn]] ReturnType abort()
+	{ ::abort(); }
+
+	[[noreturn]] inline void abort()
+	{ ::abort(); }
 }
 
 #endif

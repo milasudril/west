@@ -39,7 +39,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 
 		auto write_res = session.connection.write(span_to_read);
 		buffer.consume_elements(write_res.bytes_written);
-
 		m_bytes_to_write -= write_res.bytes_written;
 
 		if(std::size(buffer.span_to_read()) == 0)

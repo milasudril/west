@@ -13,6 +13,11 @@ namespace west::http
 		more_data_needed
 	};
 
+	constexpr bool should_return(resp_header_serializer_error_code ec)
+	{
+		return ec != resp_header_serializer_error_code::more_data_needed;
+	}
+
 	struct resp_header_serialize_result
 	{
 		char* ptr;
