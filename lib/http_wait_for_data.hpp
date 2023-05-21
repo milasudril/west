@@ -32,42 +32,41 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		};
 	}
 
-	while(true)
+	auto const read_result = session.connection.read(buffer.span_to_write());
+	buffer.reset_with_new_length(read_result.bytes_read);
+
+	switch(read_result.ec)
 	{
-		auto const read_result = session.connection.read(buffer.span_to_write());
-		buffer.reset_with_new_length(read_result.bytes_read);
+		case io::operation_result::completed:
+			return session_state_response{
+				.status = session_state_status::connection_closed,
+				.http_status = status::ok,
+				.error_message = nullptr
+			};
 
-		switch(read_result.ec)
-		{
-			case io::operation_result::completed:
-				return session_state_response{
-					.status = session_state_status::connection_closed,
-					.http_status = status::ok,
-					.error_message = nullptr
-				};
-				break;
+		case io::operation_result::object_is_still_ready:
+			return session_state_response{
+				.status = session_state_status::completed,
+				.http_status = status::ok,
+				.error_message = nullptr
+			};
 
-			case io::operation_result::object_is_still_ready:
-				return session_state_response{
-					.status = session_state_status::completed,
-					.http_status = status::ok,
-					.error_message = nullptr
-				};
+		case io::operation_result::operation_would_block:
+			return session_state_response{
+				.status = session_state_status::more_data_needed,
+				.http_status = status::ok,
+				.error_message = nullptr
+			};
 
-			case io::operation_result::operation_would_block:
-				return session_state_response{
-					.status = session_state_status::more_data_needed,
-					.http_status = status::ok,
-					.error_message = nullptr
-				};
+		case io::operation_result::error:
+			return session_state_response{
+				.status = session_state_status::io_error,
+				.http_status = status::internal_server_error,
+				.error_message = make_unique_cstr("I/O error")
+			};
 
-			case io::operation_result::error:
-				return session_state_response{
-					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("I/O error")
-				};
-		}
+		default:
+			__builtin_unreachable();
 	}
 }
 
