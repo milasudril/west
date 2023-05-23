@@ -48,8 +48,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 			return dest.write(buffer);
 		},
 		overload{
-			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code ec){
-				assert(ec == resp_header_serializer_error_code::completed);
+			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code){
 				assert(std::size(buffer.span_to_read()) == 0);
 				return session_state_response{
 					.status = session_state_status::completed,

@@ -7,11 +7,8 @@
 
 namespace west::http
 {
-	enum class resp_header_serializer_error_code
-	{
-		completed,
-		more_data_needed
-	};
+	struct resp_header_serializer_error_code
+	{};
 
 	constexpr bool is_error_indicator(resp_header_serializer_error_code)
 	{ return false; }
@@ -33,11 +30,10 @@ namespace west::http
 			std::copy_n(std::begin(m_range_to_write), n, std::begin(output_buffer));
 			m_range_to_write = std::span{std::begin(m_range_to_write) + n, std::end(m_range_to_write)};
 
-			auto const ec = std::size(m_range_to_write) == 0 ?
-				 resp_header_serializer_error_code::completed
-				:resp_header_serializer_error_code::more_data_needed;
-
-			return resp_header_serialize_result{std::data(output_buffer) + n, ec};
+			return resp_header_serialize_result{
+				std::data(output_buffer) + n,
+				resp_header_serializer_error_code{}
+			};
 		}
 
 	private:

@@ -22,7 +22,7 @@ TESTCASE(west_http_response_header_serializer_serialize_no_reason_phrase)
 		auto const res = serializer.serialize(buffer);
 		result.insert(std::end(result), std::data(buffer), res.ptr);
 
-		if(res.ec == west::http::resp_header_serializer_error_code::completed)
+		if(res.ptr == std::begin(buffer))
 		{ break; }
 	}
 
