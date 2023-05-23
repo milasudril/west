@@ -9,7 +9,7 @@ namespace west::io
 {
 	enum class operation_result{completed, operation_would_block, object_is_still_ready, error};
 
-	constexpr bool should_return(operation_result res)
+	constexpr bool is_error_indicator(operation_result res)
 	{ return res != operation_result::object_is_still_ready; }
 
 	struct read_result

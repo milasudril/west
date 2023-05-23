@@ -18,7 +18,7 @@ namespace west::http
 	concept error_code = io_adapter::error_code<T> && requires(T x)
 	{
 		{to_string(x)} -> std::convertible_to<char const*>;
-		{should_return(x)} -> std::same_as<bool>;
+		{is_error_indicator(x)} -> std::same_as<bool>;
 		{can_continue(x)} -> std::same_as<bool>;
 	};
 

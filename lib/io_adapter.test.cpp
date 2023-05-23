@@ -143,7 +143,7 @@ namespace
 	enum class retval{exit_by_write, exit_by_read, exit_at_end_of_buffer};
 
 	template<class T>
-	constexpr bool should_return(T ec)
+	constexpr bool is_error_indicator(T ec)
 	{ return ec == T::exit; }
 
 	struct read_result

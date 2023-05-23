@@ -11,7 +11,7 @@ namespace west::io_adapter
 	template<class T>
 	concept error_code = requires(T x)
 	{
-		{should_return(x)} -> std::same_as<bool>;
+		{is_error_indicator(x)} -> std::same_as<bool>;
 	};
 
 	template<class T>
@@ -118,7 +118,7 @@ namespace west::io_adapter
 				auto const read_result = read(span_to_write);
 				buffer.reset_with_new_length(read_result.bytes_read);
 
-				if(should_return(read_result.ec) || read_result.bytes_read == 0)
+				if(is_error_indicator(read_result.ec) || read_result.bytes_read == 0)
 				{ return map_error_code(read_result.ec); }
 			}
 			else
@@ -128,7 +128,7 @@ namespace west::io_adapter
 				buffer.consume_elements(write_result.bytes_written);
 				bytes_to_read -= write_result.bytes_written;
 
-				if(should_return(write_result.ec) || write_result.bytes_written == 0)
+				if(is_error_indicator(write_result.ec) || write_result.bytes_written == 0)
 				{ return map_error_code(write_result.ec); }
 			}
 		}

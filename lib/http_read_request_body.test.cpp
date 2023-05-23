@@ -10,7 +10,7 @@ namespace
 {
 	enum class test_result{completed, is_blocked, error};
 
-	constexpr bool should_return(test_result res)
+	constexpr bool is_error_indicator(test_result res)
 	{ return res != test_result::completed; }
 
 	constexpr char const* to_string(test_result res)

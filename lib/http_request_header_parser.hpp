@@ -31,7 +31,7 @@ namespace west::http
 		bad_field_value
 	};
 
-	constexpr bool should_return(req_header_parser_error_code ec)
+	constexpr bool is_error_indicator(req_header_parser_error_code ec)
 	{ return ec != req_header_parser_error_code::more_data_needed; }
 
 	constexpr char const* to_string(req_header_parser_error_code ec)

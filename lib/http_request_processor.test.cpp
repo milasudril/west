@@ -77,7 +77,7 @@ namespace
 
 	enum class test_result{ok, failure};
 
-	constexpr bool should_return(test_result res)
+	constexpr bool is_error_indicator(test_result res)
 	{
 		return res != test_result::ok;
 	}
