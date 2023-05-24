@@ -15,7 +15,7 @@ namespace west::http
 			m_bytes_to_write{bytes_to_write}
 		{}
 
-		template<io::data_source Source, class RequestHandler, size_t BufferSize>
+		template<io::data_sink Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
@@ -24,10 +24,10 @@ namespace west::http
 	};
 }
 
-template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
+template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::write_response_body::operator()(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
-	session<Source, RequestHandler>& session)
+	session<Sink, RequestHandler>& session)
 {
 	return transfer_data(
 		[&req_handler = session.request_handler](std::span<char> buffer){
