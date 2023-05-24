@@ -31,9 +31,6 @@ namespace west::http
 		bad_field_value
 	};
 
-	constexpr bool is_error_indicator(req_header_parser_error_code ec)
-	{ return ec != req_header_parser_error_code::more_data_needed; }
-
 	constexpr char const* to_string(req_header_parser_error_code ec)
 	{
 		switch(ec)
@@ -361,10 +358,7 @@ auto west::http::request_header_parser::parse(InputSeq input_seq)
 				if(ch_in == '\n')
 				{ return req_header_parse_result{ptr, req_header_parser_error_code::completed}; }
 				else
-				{
-					puts("linefeed");
-					return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed};
-				}
+				{	return req_header_parse_result{ptr, req_header_parser_error_code::expected_linefeed}; }
 		}
 	}
 }

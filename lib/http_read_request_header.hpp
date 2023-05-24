@@ -26,6 +26,13 @@ namespace west::http
 	};
 }
 
+template<>
+struct west::io_adapter::error_code_checker<west::http::req_header_parser_error_code>
+{
+	constexpr bool operator()(http::req_header_parser_error_code ec) const
+	{ return ec != http::req_header_parser_error_code::more_data_needed; }
+};
+
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::read_request_header::operator()(
 	io_adapter::buffer_span<char, BufferSize>& buffer,

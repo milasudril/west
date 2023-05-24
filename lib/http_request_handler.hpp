@@ -15,10 +15,9 @@ namespace west::http
 	};
 
 	template<class T>
-	concept error_code = io_adapter::error_code<T> && requires(T x)
+	concept error_code = requires(T x)
 	{
 		{to_string(x)} -> std::convertible_to<char const*>;
-		{is_error_indicator(x)} -> std::same_as<bool>;
 		{can_continue(x)} -> std::same_as<bool>;
 	};
 

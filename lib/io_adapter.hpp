@@ -9,16 +9,10 @@
 namespace west::io_adapter
 {
 	template<class T>
-	concept error_code = requires(T x)
-	{
-		{is_error_indicator(x)} -> std::same_as<bool>;
-	};
-
-	template<class T>
 	concept read_result = requires(T x)
 	{
 		{x.bytes_read} -> std::same_as<size_t&>;
-		{x.ec} -> error_code;
+		{x.ec};
 	};
 
 	template<class T>
@@ -31,7 +25,7 @@ namespace west::io_adapter
 	concept write_result = requires(T x)
 	{
 		{x.bytes_written} -> std::same_as<size_t&>;
-		{x.ec} -> error_code;
+		{x.ec};
 	};
 
 	template<class T>
@@ -41,7 +35,7 @@ namespace west::io_adapter
 	};
 
 	template<class T, class ErrorCode>
-	concept error_code_mapper = error_code<ErrorCode> && requires(T x, ErrorCode ec)
+	concept error_code_mapper = requires(T x, ErrorCode ec)
 	{
 		{x(ec)};
 		{x()};
@@ -102,6 +96,13 @@ namespace west::io_adapter
 		using ec_type = std::remove_cvref_t<decltype(std::declval<Result>().ec)>;
 	}
 
+	template<class T>
+	struct error_code_checker
+	{
+		bool operator()(T ec) const
+		{ return is_error_indicator(ec); }
+	};
+
 	template<read_function R, write_function W, class ErrorCodeMapper, size_t BufferSize>
 	requires(error_code_mapper<ErrorCodeMapper, detail::ec_type<detail::read_function_res<R>>>
 		&& error_code_mapper<ErrorCodeMapper, detail::ec_type<detail::write_function_res<W>>>)
@@ -118,7 +119,9 @@ namespace west::io_adapter
 				auto const read_result = read(span_to_write);
 				buffer.reset_with_new_length(read_result.bytes_read);
 
-				if(is_error_indicator(read_result.ec) || read_result.bytes_read == 0)
+				using ec_type = detail::ec_type<detail::read_function_res<R>>;
+
+				if(error_code_checker<ec_type>{}(read_result.ec) || read_result.bytes_read == 0)
 				{ return map_error_code(read_result.ec); }
 			}
 			else
@@ -128,7 +131,9 @@ namespace west::io_adapter
 				buffer.consume_elements(write_result.bytes_written);
 				bytes_to_read -= write_result.bytes_written;
 
-				if(is_error_indicator(write_result.ec) || write_result.bytes_written == 0)
+				using ec_type = detail::ec_type<detail::write_function_res<W>>;
+
+				if(error_code_checker<ec_type>{}(write_result.ec) || write_result.bytes_written == 0)
 				{ return map_error_code(write_result.ec); }
 			}
 		}

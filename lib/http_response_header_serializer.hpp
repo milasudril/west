@@ -10,13 +10,10 @@ namespace west::http
 	struct resp_header_serializer_error_code
 	{};
 
-	constexpr bool is_error_indicator(resp_header_serializer_error_code)
-	{ return false; }
-
 	struct resp_header_serialize_result
 	{
 		char* ptr;
-		resp_header_serializer_error_code ec;
+		[[no_unique_address]] resp_header_serializer_error_code ec;
 	};
 
 	class response_header_serializer

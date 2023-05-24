@@ -27,6 +27,13 @@ namespace west::http
 	};
 }
 
+template<>
+struct west::io_adapter::error_code_checker<west::http::resp_header_serializer_error_code>
+{
+	constexpr bool operator()(http::resp_header_serializer_error_code) const
+	{ return false; }
+};
+
 template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 [[nodiscard]] auto west::http::write_response_header::operator()(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
