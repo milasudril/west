@@ -42,8 +42,8 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 				return session_state_response{
 					.status = keep_going ?
 						session_state_status::more_data_needed :
-						session_state_status::client_error_detected,
-					.http_status = keep_going? status::ok : status::bad_request,
+						session_state_status::write_response_failed,
+					.http_status = keep_going? status::ok : status::internal_server_error,
 					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
 				};
 			},

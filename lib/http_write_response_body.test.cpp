@@ -35,7 +35,7 @@ namespace
 		std::string output;
 	};
 
-	enum class error_code{no_error};
+	enum class error_code{no_error, would_block, error};
 
 	struct read_result
 	{
@@ -43,19 +43,49 @@ namespace
 		error_code ec;
 	};
 
-	constexpr bool can_continue(error_code)
+	constexpr bool can_continue(error_code ec)
 	{
-		return true;
+		switch(ec)
+		{
+			case error_code::no_error:
+				return true;
+			case error_code::would_block:
+				return true;
+			case error_code::error:
+				return false;
+			default:
+				__builtin_unreachable();
+		}
 	}
 
-	constexpr bool is_error_indicator(error_code)
+	constexpr bool is_error_indicator(error_code ec)
 	{
-		return false;
+		switch(ec)
+		{
+			case error_code::no_error:
+				return false;
+			case error_code::would_block:
+				return false;
+			case error_code::error:
+				return true;
+			default:
+				__builtin_unreachable();
+		}
 	}
 
-	constexpr char const* to_string(error_code)
+	constexpr char const* to_string(error_code ec)
 	{
-		return "No error";
+		switch(ec)
+		{
+			case error_code::no_error:
+				return "No error";
+			case error_code::would_block:
+				return "Would block";
+			case error_code::error:
+				return "Error";
+			default:
+				__builtin_unreachable();
+		}
 	}
 
 	struct request_handler
@@ -80,6 +110,28 @@ namespace
 
 		char const* read_pos;
 		char const* end_ptr;
+	};
+
+	struct blocking_request_handler
+	{
+		read_result read_response_content(std::span<char>)
+		{
+			return read_result{
+				0,
+				error_code::would_block
+			};
+		};
+	};
+
+	struct failing_request_handler
+	{
+		read_result read_response_content(std::span<char>)
+		{
+			return read_result{
+				0,
+				error_code::error
+			};
+		};
 	};
 }
 
@@ -142,4 +194,64 @@ TESTCASE(http_write_response_body_write_failed)
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 	EXPECT_EQ(res.http_status, west::http::status::ok);
 	EXPECT_EQ(res.error_message, nullptr);
+}
+
+TESTCASE(http_write_response_body_blocking_request_handler)
+{
+	std::array<char, 4096> buffer{};
+	west::io_adapter::buffer_span buff_sapn{buffer};
+
+	std::string_view src{
+"Etiam egestas ex laoreet tortor tristique, vitae tristique enim vehicula. Aenean mollis tristique "
+"eros nec malesuada. Suspendisse bibendum maximus erat, id volutpat enim. Phasellus at pharetra "
+"elit, ut molestie velit. Phasellus sed lacinia risus. Pellentesque condimentum, arcu at ultricies "
+"egestas, dui lectus fringilla dui, et pellentesque lorem enim at arcu. Pellentesque sed tortor a "
+"tortor sollicitudin dapibus nec sed nulla. Nulla laoreet vel eros ut venenatis. Praesent aliquam "
+"pharetra scelerisque. Fusce ut ex fermentum, laoreet ex ut, sollicitudin metus. Praesent luctus "
+"purus at eleifend ullamcorper. Integer viverra ipsum enim, eu sollicitudin diam rhoncus in. "
+};
+
+	west::http::session session{sink{},
+		blocking_request_handler{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+
+	west::http::write_response_body writer{std::size(src)};
+
+	auto res = writer(buff_sapn, session);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
+	EXPECT_EQ(res.http_status, west::http::status::ok);
+	EXPECT_EQ(res.error_message, nullptr);
+}
+
+TESTCASE(http_write_response_body_failing_request_handler)
+{
+	std::array<char, 4096> buffer{};
+	west::io_adapter::buffer_span buff_sapn{buffer};
+
+	std::string_view src{
+"Etiam egestas ex laoreet tortor tristique, vitae tristique enim vehicula. Aenean mollis tristique "
+"eros nec malesuada. Suspendisse bibendum maximus erat, id volutpat enim. Phasellus at pharetra "
+"elit, ut molestie velit. Phasellus sed lacinia risus. Pellentesque condimentum, arcu at ultricies "
+"egestas, dui lectus fringilla dui, et pellentesque lorem enim at arcu. Pellentesque sed tortor a "
+"tortor sollicitudin dapibus nec sed nulla. Nulla laoreet vel eros ut venenatis. Praesent aliquam "
+"pharetra scelerisque. Fusce ut ex fermentum, laoreet ex ut, sollicitudin metus. Praesent luctus "
+"purus at eleifend ullamcorper. Integer viverra ipsum enim, eu sollicitudin diam rhoncus in. "
+};
+
+	west::http::session session{sink{},
+		failing_request_handler{},
+		west::http::request_header{},
+		west::http::response_header{}
+	};
+
+	west::http::write_response_body writer{std::size(src)};
+
+	auto res = writer(buff_sapn, session);
+
+	EXPECT_EQ(res.status, west::http::session_state_status::write_response_failed);
+	EXPECT_EQ(res.http_status, west::http::status::internal_server_error);
+	EXPECT_EQ(res.error_message.get(), std::string_view{"Error"});
 }

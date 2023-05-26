@@ -16,6 +16,7 @@ namespace west::http
 		connection_closed,
 		more_data_needed,
 		client_error_detected,
+		write_response_failed,
 		io_error
 	};
 
@@ -41,6 +42,7 @@ namespace west::http
 	{
 		switch(res)
 		{
+
 			case io::operation_result::completed:
 				// NOTE: Client have closed its "write" end of the socket. Its may "read" end may still
 				//       be open, and thus, it may be possible to respond with a HTTP 400 message.
