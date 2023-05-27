@@ -85,16 +85,59 @@ namespace
 
 
 
-	enum class request_handler_error_code{};
 
-	constexpr bool is_error_indicator(request_handler_error_code)
-	{	return true; }
+	enum class request_handler_error_code{no_error, would_block, error};
 
-	constexpr bool can_continue(request_handler_error_code)
-	{ return false; }
+	struct read_result
+	{
+		size_t bytes_read;
+		request_handler_error_code ec;
+	};
 
-	constexpr char const* to_string(request_handler_error_code)
-	{ return "Foobar"; }
+	constexpr bool can_continue(request_handler_error_code ec)
+	{
+		switch(ec)
+		{
+			case request_handler_error_code::no_error:
+				return true;
+			case request_handler_error_code::would_block:
+				return true;
+			case request_handler_error_code::error:
+				return false;
+			default:
+				__builtin_unreachable();
+		}
+	}
+
+	constexpr bool is_error_indicator(request_handler_error_code ec)
+	{
+		switch(ec)
+		{
+			case request_handler_error_code::no_error:
+				return false;
+			case request_handler_error_code::would_block:
+				return false;
+			case request_handler_error_code::error:
+				return true;
+			default:
+				__builtin_unreachable();
+		}
+	}
+
+	constexpr char const* to_string(request_handler_error_code ec)
+	{
+		switch(ec)
+		{
+			case request_handler_error_code::no_error:
+				return "No error";
+			case request_handler_error_code::would_block:
+				return "Would block";
+			case request_handler_error_code::error:
+				return "Error";
+			default:
+				__builtin_unreachable();
+		}
+	}
 
 	struct request_handler_write_result
 	{
@@ -111,8 +154,14 @@ namespace
 	class request_handler
 	{
 	public:
+		explicit request_handler(std::string_view response_body):
+			m_response_body{response_body},
+			m_read_offset{std::begin(m_response_body)}
+		{}
+
 		auto finalize_state(west::http::request_header const&)
 		{
+			puts("Finalize read header");
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::bad_request;
 			validation_result.error_message = west::make_unique_cstr("Invalid request header");
@@ -120,10 +169,12 @@ namespace
 		}
 
 
-		auto finalize_state(west::http::field_map&)
+		auto finalize_state(west::http::field_map& fields)
 		{
+			puts("Finalize read body");
 			west::http::finalize_state_result validation_result;
-			validation_result.http_status = west::http::status::bad_request;
+			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
+			validation_result.http_status = west::http::status::i_am_a_teapot;
 			validation_result.error_message = west::make_unique_cstr("Invalid request body");
 			return validation_result;
 		}
@@ -133,10 +184,22 @@ namespace
 			return request_handler_write_result{};
 		}
 
-		auto read_response_content(std::span<char>)
+		auto read_response_content(std::span<char> buffer)
 		{
-			return request_handler_read_result{};
+			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
+			auto const bytes_to_write = std::min(std::size(buffer), n_bytes_left);
+			std::copy_n(m_read_offset, bytes_to_write, std::begin(buffer));
+			m_read_offset += bytes_to_write;
+
+			return request_handler_read_result{
+				bytes_to_write,
+				request_handler_error_code::no_error
+			};
 		}
+
+	private:
+		std::string_view m_response_body;
+		std::string_view::iterator m_read_offset;
 	};
 }
 
@@ -151,7 +214,7 @@ TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 "Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
 "purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
 
-	west::http::request_processor proc{socket{}, request_handler{}};
+	west::http::request_processor proc{socket{}, request_handler{""}};
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::io_error);
 }
@@ -167,9 +230,32 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 "Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
 "purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
 
-	west::http::request_processor proc{socket{}, request_handler{}};
+	west::http::request_processor proc{socket{}, request_handler{""}};
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::completed);
-	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n\r\n");
+	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 418 I am a teapot\r\n"
+	"Content-Length: 0\r\n"
+"\r\n");
+}
+
+TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_response_body)
+{
+	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"\r\n"
+"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+
+	west::http::request_processor proc{socket{}, request_handler{"This is a test"}};
+	proc.session().connection.client_stop_write();
+	auto const res = proc.socket_is_ready();
+	EXPECT_EQ(res, west::http::request_processor_status::completed);
+	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 418 I am a teapot\r\n"
+"Content-Length: 14\r\n"
+"\r\n"
+"This is a test");
 }
