@@ -10,7 +10,7 @@ namespace
 	class socket
 	{
 	public:
-		auto read(std::span<char>)
+		auto read(std::span<char> buffer)
 		{
 			if((m_endpoint_status & CLIENT_WRITE_CLOSED) || (m_endpoint_status & SERVER_READ_CLOSED))
 			{
@@ -20,11 +20,35 @@ namespace
 				};
 			}
 			else
+			if(m_endpoint_status & READ_TRIGGERS_ERROR)
 			{
 				return west::io::read_result{
 					.bytes_read = 0,
 					.ec = west::io::operation_result::error
 				};
+			}
+			else
+			{
+				if(m_calls_to_read % m_read_blocks_every != 0)
+				{
+					++m_calls_to_read;
+					auto const bytes_left = static_cast<size_t>(std::end(m_request) - m_request_offset);
+					auto const bytes_to_read = std::min(std::min(std::size(buffer), bytes_left), static_cast<size_t>(23));
+					std::copy_n(m_request_offset, bytes_to_read, std::begin(buffer));
+					m_request_offset += bytes_to_read;
+					return west::io::read_result{
+						.bytes_read = bytes_to_read,
+						.ec = west::io::operation_result::object_is_still_ready
+					};
+				}
+				else
+				{
+					++m_calls_to_read;
+					return west::io::read_result{
+						.bytes_read = 0,
+						.ec = west::io::operation_result::operation_would_block
+					};
+				}
 			}
 		}
 
@@ -71,6 +95,18 @@ namespace
 			m_output.clear();
 		}
 
+		void request(std::string_view req)
+		{
+			m_request = req;
+			m_request_offset = std::begin(req);
+		}
+
+		void read_blocks(size_t n)
+		{
+			assert(n >= 2);
+			m_read_blocks_every = n;
+		}
+
 	private:
 		uint32_t m_endpoint_status{0};
 		static constexpr uint32_t CLIENT_READ_CLOSED{1};
@@ -80,7 +116,12 @@ namespace
 		static constexpr uint32_t READ_TRIGGERS_ERROR{16};
 		static constexpr uint32_t WRITE_TRIGGERS_ERROR{32};
 
+		std::string_view m_request;
+		std::string_view::iterator m_request_offset;
 		std::string m_output;
+
+		size_t m_read_blocks_every{65536};
+		size_t m_calls_to_read{0};
 	};
 
 
@@ -163,8 +204,8 @@ namespace
 		{
 			puts("Finalize read header");
 			west::http::finalize_state_result validation_result;
-			validation_result.http_status = west::http::status::bad_request;
-			validation_result.error_message = west::make_unique_cstr("Invalid request header");
+			validation_result.http_status = west::http::status::ok;
+			validation_result.error_message = nullptr;
 			return validation_result;
 		}
 
@@ -186,57 +227,56 @@ namespace
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
 		}
 
-		auto process_request_content(std::span<char const>)
+		auto process_request_content(std::span<char const> buffer)
 		{
-			return request_handler_write_result{};
+			m_request.insert(std::end(m_request), std::begin(buffer), std::end(buffer));
+			return request_handler_write_result{
+				.bytes_written = std::size(buffer),
+				.ec = request_handler_error_code::no_error
+			};
 		}
 
 		auto read_response_content(std::span<char> buffer)
 		{
 			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
-			auto const bytes_to_write = std::min(std::size(buffer), n_bytes_left);
-			std::copy_n(m_read_offset, bytes_to_write, std::begin(buffer));
-			m_read_offset += bytes_to_write;
+			auto const bytes_to_read = std::min(std::size(buffer), n_bytes_left);
+			std::copy_n(m_read_offset, bytes_to_read, std::begin(buffer));
+			m_read_offset += bytes_to_read;
 
 			return request_handler_read_result{
-				bytes_to_write,
+				bytes_to_read,
 				request_handler_error_code::no_error
 			};
 		}
+
+		auto& request() const { return m_request; }
 
 	private:
 		std::unique_ptr<char[]> m_error_message;
 		std::string_view m_response_body;
 		std::string_view::iterator m_read_offset;
+		std::string m_request;
 	};
 }
 
 TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 {
-	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+	std::string_view request{"GET / HTTP/1.1\r\n"
 "Host: localhost:8000\r\n"
-"\r\n"
-"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
-"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
-"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
-"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
-"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+"\r\n"};
 
 	west::http::request_processor proc{socket{}, request_handler{""}};
+	proc.session().connection.enable_read_error();
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::io_error);
 }
 
+
 TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_no_response_body)
 {
-	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+	std::string_view request{"GET / HTTP/1.1\r\n"
 "Host: localhost:8000\r\n"
-"\r\n"
-"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
-"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
-"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
-"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
-"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+"\r\n"};
 
 	west::http::request_processor proc{socket{}, request_handler{""}};
 	proc.session().connection.client_stop_write();
@@ -250,14 +290,9 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 
 TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_response_body)
 {
-	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+	std::string_view request{"GET / HTTP/1.1\r\n"
 "Host: localhost:8000\r\n"
-"\r\n"
-"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
-"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
-"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
-"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
-"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+"\r\n"};
 
 	west::http::request_processor proc{socket{}, request_handler{"This is a test"}};
 	proc.session().connection.client_stop_write();
@@ -267,4 +302,81 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 	"Content-Length: 16\r\n"
 "\r\n"
 "Header truncated");
+}
+
+TESTCASE(west_http_request_processor_process_socket_connection_closed_while_reading_request_header)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Content-Length: 469\r\n"
+"\r\n"
+"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."
+"GET /favicon.ico HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{"This is a test"}};
+	proc.session().connection.request(request);
+	proc.session().connection.read_blocks(2);
+	{
+		auto const res = proc.socket_is_ready();
+		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
+	}
+
+	proc.session().connection.client_stop_write();
+
+	{
+		auto const res = proc.socket_is_ready();
+		EXPECT_EQ(res, west::http::request_processor_status::completed);
+		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
+		EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
+"Content-Length: 16\r\n"
+"\r\n"
+"Header truncated");
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_connection_closed_while_reading_request_body)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Content-Length: 469\r\n"
+"\r\n"
+"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."
+"GET /favicon.ico HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{"This is a test"}};
+	proc.session().connection.request(request);
+	proc.session().connection.read_blocks(8);
+	{
+		auto const res = proc.socket_is_ready();
+		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
+	}
+
+	{
+		auto const res = proc.socket_is_ready();
+		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(proc.session().request_handler.request(),
+			"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit sollicit");
+	}
+
+	proc.session().connection.client_stop_write();
+	{
+		auto const res = proc.socket_is_ready();
+		EXPECT_EQ(res, west::http::request_processor_status::completed);
+		EXPECT_EQ(proc.session().request_handler.request(),
+			"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit sollicit");
+		EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
+"Content-Length: 40\r\n"
+"\r\n"
+"Client claims there is more data to read");
+	}
 }
