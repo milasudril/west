@@ -25,7 +25,7 @@ namespace west::http
 		{
 			while(true)
 			{
-				auto const res = std::visit([this]<class T>(T& state){
+				auto res = std::visit([this]<class T>(T& state){
 					return state(std::get<select_buffer_index<T>::value>(m_buff_spans), m_session);
 				}, m_state);
 
@@ -43,7 +43,12 @@ namespace west::http
 
 					case session_state_status::client_error_detected:
 						m_session.connection.stop_reading();
-						m_state = make_state_handler(m_state, m_session.request_header, m_session.response_header);
+						m_session.response_header = response_header{};
+						m_session.request_handler.finalize_state(m_session.response_header.fields, std::move(res));
+						m_session.response_header.status_line.http_version = version{1, 1};
+						m_session.response_header.status_line.status_code = res.http_status;
+						m_session.response_header.status_line.reason_phrase = to_string(res.http_status);
+						m_state = write_response_header{m_session.response_header};
 						break;
 
 					case session_state_status::write_response_failed:

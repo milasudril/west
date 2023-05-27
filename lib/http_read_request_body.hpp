@@ -55,7 +55,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				session.response_header = response_header{};
 				auto res = session.request_handler.finalize_state(session.response_header.fields);
 
-				// TODO: May need to set these always when starting to generate a response
 				session.response_header.status_line.http_version = version{1, 1};
 				session.response_header.status_line.status_code = res.http_status;
 				session.response_header.status_line.reason_phrase = to_string(res.http_status);

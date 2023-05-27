@@ -149,11 +149,7 @@ namespace west::http
 	template<>
 	inline auto make_state_handler<wait_for_data>(request_header const&,
 		response_header const&)
-	{
-		puts("==================");
-		return wait_for_data{};
-
-	}
+	{ return wait_for_data{}; }
 
 
 

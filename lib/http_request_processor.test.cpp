@@ -168,7 +168,6 @@ namespace
 			return validation_result;
 		}
 
-
 		auto finalize_state(west::http::field_map& fields)
 		{
 			puts("Finalize read body");
@@ -177,6 +176,14 @@ namespace
 			validation_result.http_status = west::http::status::i_am_a_teapot;
 			validation_result.error_message = west::make_unique_cstr("Invalid request body");
 			return validation_result;
+		}
+
+		void finalize_state(west::http::field_map& fields, west::http::session_state_response&& res)
+		{
+			m_error_message = std::move(res.error_message);
+			m_response_body = std::string_view{m_error_message.get()};
+			m_read_offset = std::begin(m_response_body);
+			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
 		}
 
 		auto process_request_content(std::span<char const>)
@@ -198,6 +205,7 @@ namespace
 		}
 
 	private:
+		std::unique_ptr<char[]> m_error_message;
 		std::string_view m_response_body;
 		std::string_view::iterator m_read_offset;
 	};
@@ -234,9 +242,10 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::completed);
-	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 418 I am a teapot\r\n"
-	"Content-Length: 0\r\n"
-"\r\n");
+	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
+	"Content-Length: 16\r\n"
+"\r\n"
+"Header truncated");
 }
 
 TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_response_body)
@@ -254,8 +263,8 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::completed);
-	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 418 I am a teapot\r\n"
-"Content-Length: 14\r\n"
+	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
+	"Content-Length: 16\r\n"
 "\r\n"
-"This is a test");
+"Header truncated");
 }
