@@ -32,8 +32,7 @@ namespace west::http
 	struct session_state_response
 	{
 		session_state_status status;
-		enum status http_status;
-		std::unique_ptr<char[]> error_message;
+		finalize_state_result state_result;
 	};
 
 	template<class MsgSource>
@@ -48,8 +47,10 @@ namespace west::http
 				//       be open, and thus, it may be possible to respond with a HTTP 400 message.
 				return session_state_response{
 					.status = session_state_status::client_error_detected,
-					.http_status = status::bad_request,
-					.error_message = make_unique_cstr(std::forward<MsgSource>(at_conn_close_msg)())
+					.state_result = finalize_state_result{
+						.http_status = status::bad_request,
+						.error_message = make_unique_cstr(std::forward<MsgSource>(at_conn_close_msg)())
+					}
 				};
 
 			// GCOVR_EXCL_START
@@ -60,15 +61,19 @@ namespace west::http
 			case io::operation_result::operation_would_block:
 				return session_state_response{
 					.status = session_state_status::more_data_needed,
-					.http_status = status::ok,
-					.error_message = nullptr
+					.state_result = finalize_state_result{
+						.http_status = status::ok,
+						.error_message = nullptr
+					}
 				};
 
 			case io::operation_result::error:
 				return session_state_response{
 					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("I/O error")
+					.state_result = finalize_state_result{
+						.http_status = status::internal_server_error,
+						.error_message = make_unique_cstr("I/O error")
+					}
 				};
 			// GCOVR_EXCL_START
 			default:
@@ -84,8 +89,10 @@ namespace west::http
 			case io::operation_result::completed:
 				return session_state_response{
 					.status = session_state_status::connection_closed,
-					.http_status = status::ok,
-					.error_message = nullptr
+					.state_result  = finalize_state_result {
+						.http_status = status::ok,
+						.error_message = nullptr
+					}
 				};
 
 			// GCOVR_EXCL_START
@@ -96,15 +103,19 @@ namespace west::http
 			case io::operation_result::operation_would_block:
 				return session_state_response{
 					.status = session_state_status::more_data_needed,
-					.http_status = status::ok,
-					.error_message = nullptr
+					.state_result = finalize_state_result {
+						.http_status = status::ok,
+						.error_message = nullptr
+					}
 				};
 
 			case io::operation_result::error:
 				return session_state_response{
 					.status = session_state_status::io_error,
-					.http_status = status::internal_server_error,
-					.error_message = make_unique_cstr("I/O error")
+					.state_result = finalize_state_result {
+						.http_status = status::internal_server_error,
+						.error_message = make_unique_cstr("I/O error")
+					}
 				};
 			// GCOVR_EXCL_START
 			default:

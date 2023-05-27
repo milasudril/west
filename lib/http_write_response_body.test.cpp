@@ -161,8 +161,8 @@ TESTCASE(http_write_response_body_write_all_data)
 	auto res = writer(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::ok);
-	EXPECT_EQ(res.error_message, nullptr);
+	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
+	EXPECT_EQ(res.state_result.error_message, nullptr);
 	EXPECT_EQ(session.connection.output, src);
 }
 
@@ -192,8 +192,8 @@ TESTCASE(http_write_response_body_write_failed)
 	auto res = writer(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
-	EXPECT_EQ(res.http_status, west::http::status::ok);
-	EXPECT_EQ(res.error_message, nullptr);
+	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
+	EXPECT_EQ(res.state_result.error_message, nullptr);
 }
 
 TESTCASE(http_write_response_body_blocking_request_handler)
@@ -222,8 +222,8 @@ TESTCASE(http_write_response_body_blocking_request_handler)
 	auto res = writer(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
-	EXPECT_EQ(res.http_status, west::http::status::ok);
-	EXPECT_EQ(res.error_message, nullptr);
+	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
+	EXPECT_EQ(res.state_result.error_message, nullptr);
 }
 
 TESTCASE(http_write_response_body_failing_request_handler)
@@ -252,6 +252,6 @@ TESTCASE(http_write_response_body_failing_request_handler)
 	auto res = writer(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::write_response_failed);
-	EXPECT_EQ(res.http_status, west::http::status::internal_server_error);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"Error"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::internal_server_error);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Error"});
 }

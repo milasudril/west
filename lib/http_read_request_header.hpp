@@ -78,33 +78,39 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						{
 							return session_state_response{
 								.status = session_state_status::client_error_detected,
-								.http_status = status::http_version_not_supported,
-								.error_message = make_unique_cstr("This web server only supports HTTP version 1.1")
+								.state_result = finalize_state_result{
+									.http_status = status::http_version_not_supported,
+									.error_message = make_unique_cstr("This web server only supports HTTP version 1.1")
+								}
 							};
 						}
 
 						auto res = session.request_handler.finalize_state(header);
 						session.request_header = std::move(header);
+						auto const saved_http_status = res.http_status;
 						return session_state_response{
-							.status = is_client_error(res.http_status) ?
+							.status = is_client_error(saved_http_status) ?
 								session_state_status::client_error_detected : session_state_status::completed,
-							.http_status = res.http_status,
-							.error_message = std::move(res.error_message)
+							.state_result = std::move(res)
 						};
 					}
 					default:
 						return session_state_response{
 							.status = session_state_status::client_error_detected,
-							.http_status = status::bad_request,
-							.error_message = make_unique_cstr(to_string(ec))
+							.state_result = finalize_state_result{
+								.http_status = status::bad_request,
+								.error_message = make_unique_cstr(to_string(ec))
+							}
 						};
 				}
 			},
 			[](){
 				return session_state_response{
 					.status = session_state_status::client_error_detected,
-					.http_status = status::request_entity_too_large,
-					.error_message = make_unique_cstr(to_string(req_header_parser_error_code::more_data_needed))
+					.state_result = finalize_state_result{
+						.http_status = status::request_entity_too_large,
+						.error_message = make_unique_cstr(to_string(req_header_parser_error_code::more_data_needed))
+					}
 				};
 			}
 		},

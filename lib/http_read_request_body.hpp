@@ -47,8 +47,10 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 					.status = keep_going?
 						session_state_status::more_data_needed :
 						session_state_status::client_error_detected,
-					.http_status = keep_going? status::ok : status::bad_request,
-					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
+					.state_result = finalize_state_result {
+						.http_status = keep_going? status::ok : status::bad_request,
+						.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
+					}
 				};
 			},
 			[&session](){
@@ -56,15 +58,15 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				auto res = session.request_handler.finalize_state(session.response_header.fields);
 
 				session.response_header.status_line.http_version = version{1, 1};
-				session.response_header.status_line.status_code = res.http_status;
-				session.response_header.status_line.reason_phrase = to_string(res.http_status);
+				auto const saved_http_status = res.http_status;
+				session.response_header.status_line.status_code = saved_http_status;
+				session.response_header.status_line.reason_phrase = to_string(saved_http_status);
 
 				// TODO: What if request handler want to push some kind of Internal Server Error?
 				return session_state_response{
-					.status = is_client_error(res.http_status) ?
+					.status = is_client_error(saved_http_status) ?
 						session_state_status::client_error_detected : session_state_status::completed,
-					.http_status = res.http_status,
-					.error_message = std::move(res.error_message)
+					.state_result = std::move(res)
 				};
 			}
 		},

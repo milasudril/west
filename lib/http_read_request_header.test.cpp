@@ -39,8 +39,8 @@ TESTCASE(west_http_read_request_header_read_successful_with_data_after_header)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
-	EXPECT_EQ(res.http_status, west::http::status::accepted);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::accepted);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"This string comes from the test case"});
 	EXPECT_EQ(session.request_header.request_line.method, "GET");
 	EXPECT_EQ(session.request_header.request_line.request_target, "/");
 	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
@@ -64,8 +64,8 @@ TESTCASE(west_http_read_request_header_read_incomplete_at_eof)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-	EXPECT_EQ(res.http_status, west::http::status::bad_request);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"Header truncated"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Header truncated"});
 }
 
 TESTCASE(west_http_read_request_header_read_unsupported_http_version)
@@ -81,8 +81,9 @@ TESTCASE(west_http_read_request_header_read_unsupported_http_version)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-	EXPECT_EQ(res.http_status, west::http::status::http_version_not_supported);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This web server only supports HTTP version 1.1"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::http_version_not_supported);
+	EXPECT_EQ(res.state_result.error_message.get(),
+		std::string_view{"This web server only supports HTTP version 1.1"});
 	auto const remaining_data = buff_span.span_to_read();
 	EXPECT_EQ(std::size(remaining_data), 0);
 }
@@ -100,8 +101,8 @@ TESTCASE(west_http_read_request_header_read_successful_fail_in_req_handler)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-	EXPECT_EQ(res.http_status, west::http::status::not_found);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"This string comes from the test case"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::not_found);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"This string comes from the test case"});
 	auto const remaining_data = buff_span.span_to_read();
 	EXPECT_EQ(std::size(remaining_data), 0);
 }
@@ -119,8 +120,8 @@ TESTCASE(west_http_read_request_header_read_bad_header)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-	EXPECT_EQ(res.http_status, west::http::status::bad_request);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"Wrong protocol"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Wrong protocol"});
 	auto const remaining_data = buff_span.span_to_read();
 	EXPECT_EQ(std::size(remaining_data), 3);
 	EXPECT_EQ(std::string_view{session.connection.get_pointer()}, "\r\n"
@@ -140,8 +141,8 @@ TESTCASE(west_http_read_request_header_read_oversized_header)
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
-	EXPECT_EQ(res.http_status, west::http::status::request_entity_too_large);
-	EXPECT_EQ(res.error_message.get(), std::string_view{"Header truncated"});
+	EXPECT_EQ(res.state_result.http_status, west::http::status::request_entity_too_large);
+	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Header truncated"});
 	auto const remaining_data = buff_span.span_to_read();
 	EXPECT_EQ(std::size(remaining_data), 3);
 	EXPECT_EQ(std::string_view{session.connection.get_pointer()}, "");

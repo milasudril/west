@@ -43,16 +43,20 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 					.status = keep_going ?
 						session_state_status::more_data_needed :
 						session_state_status::write_response_failed,
-					.http_status = keep_going? status::ok : status::internal_server_error,
-					.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
+					.state_result = finalize_state_result {
+						.http_status = keep_going? status::ok : status::internal_server_error,
+						.error_message = keep_going? nullptr : make_unique_cstr(to_string(ec))
+					}
 				};
 			},
 			[](io::operation_result res){ return make_write_response(res); },
 			[]() {
 				return session_state_response{
 					.status = session_state_status::completed,
-					.http_status = status::ok,
-					.error_message = nullptr
+					.state_result = finalize_state_result {
+						.http_status = status::ok,
+						.error_message = nullptr
+					}
 				};
 			}
 		},

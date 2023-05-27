@@ -59,8 +59,10 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 				assert(std::size(buffer.span_to_read()) == 0);
 				return session_state_response{
 					.status = session_state_status::completed,
-					.http_status = status::ok,
-					.error_message = nullptr
+					.state_result = finalize_state_result {
+						.http_status = status::ok,
+						.error_message = nullptr
+					}
 				};
 			},
 			[](io::operation_result res){ return make_write_response(res); },

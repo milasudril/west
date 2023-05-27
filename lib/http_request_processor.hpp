@@ -48,8 +48,8 @@ namespace west::http
 						m_session.response_header = response_header{};
 						m_session.request_handler.finalize_state(m_session.response_header.fields, std::move(res));
 						m_session.response_header.status_line.http_version = version{1, 1};
-						m_session.response_header.status_line.status_code = res.http_status;
-						m_session.response_header.status_line.reason_phrase = to_string(res.http_status);
+						m_session.response_header.status_line.status_code = res.state_result.http_status;
+						m_session.response_header.status_line.reason_phrase = to_string(res.state_result.http_status);
 
 						m_state = write_response_header{m_session.response_header};
 						break;
