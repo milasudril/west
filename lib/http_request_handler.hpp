@@ -40,13 +40,16 @@ namespace west::http
 		request_header const& req_header,
 		std::span<char const> input_buffer,
 		field_map& response_fields,
-		std::span<char> output_buffer)
+		std::span<char> output_buffer,
+		finalize_state_result&& res)
 	{
 		{x.finalize_state(req_header)} -> std::same_as<finalize_state_result>;
 
 		{x.process_request_content(input_buffer)} -> process_request_content_result;
 
 		{x.finalize_state(response_fields)} -> std::same_as<finalize_state_result>;
+
+		{x.finalize_state(response_fields, std::move(res))} -> std::same_as<void>;
 
 		{x.read_response_content(output_buffer)} -> read_response_content_result;
 	};
