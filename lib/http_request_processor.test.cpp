@@ -221,6 +221,8 @@ namespace
 				{ m_rej_req = true; }
 			}
 
+			m_fail_writing_response = header.fields.contains("Fail-Writing-Response");
+
 			return validation_result;
 		}
 
@@ -268,7 +270,7 @@ namespace
 
 			return request_handler_read_result{
 				bytes_to_read,
-				request_handler_error_code::no_error
+				m_fail_writing_response ? request_handler_error_code::error : request_handler_error_code::no_error
 			};
 		}
 
@@ -280,6 +282,7 @@ namespace
 		std::string_view::iterator m_read_offset;
 		std::string m_request;
 		bool m_rej_req{false};
+		bool m_fail_writing_response{false};
 	};
 }
 
@@ -485,6 +488,35 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_2)
 "\r\n"
 "Application requested request to be reject when the body was processed");
 			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_bad_header_fail_writing_response)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Fail-Writing-Response: true\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{"Hello, World"}};
+	proc.session().connection.request(request);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::application_error);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 200 Ok\r\n"
+"Content-Length: 12\r\n"
+"\r\n");
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
 			break;
 		}
 		else
