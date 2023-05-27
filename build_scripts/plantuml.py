@@ -11,7 +11,7 @@ def compile_file(args):
 	output_dir = os.path.dirname(args['targets'][0].rstrip('/'))
 	tempdir = '/tmp/west_%s_%d'%(args['build_info']['build_id'], args['task_id'])
 	os.mkdir(tempdir)
-	prog_opts = ['plantuml', '-tsvg', '-o%s'%tempdir, input_file]
+	prog_opts = ['plantuml', '-nbthread 1', '-tsvg', '-o%s'%tempdir, input_file]
 	res = subprocess.run(prog_opts)
 	if res.returncode != 0:
 		shutil.rmtree(tempdir)
