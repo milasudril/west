@@ -11,27 +11,11 @@
 
 namespace west::http
 {
-	// To be moved to different file
-	class write_error_response
-	{
-	public:
-		template<class T, size_t BufferSize>
-		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>&, T const&)
-		{
-			return session_state_response{
-				.status = session_state_status::io_error,
-				.http_status = status::not_implemented,
-				.error_message = make_unique_cstr("Not implemented")
-			};
-		}
-	};
-
 	using request_state_holder = std::variant<read_request_header,
 		read_request_body,
 		write_response_header,
 		write_response_body,
-		wait_for_data,
-		write_error_response>;
+		wait_for_data>;
 
 
 
@@ -56,10 +40,6 @@ namespace west::http
 
 	template<>
 	struct next_request_state<wait_for_data>
-	{ using state_handler = read_request_header; };
-
-	template<>
-	struct next_request_state<write_error_response>
 	{ using state_handler = read_request_header; };
 
 
@@ -87,10 +67,6 @@ namespace west::http
 	struct select_buffer_index<wait_for_data>
 	{ static constexpr size_t value = 0; };
 
-	template<>
-	struct select_buffer_index<write_error_response>
-	{ static constexpr size_t value = 1; };
-
 
 
 	template<class T>
@@ -98,10 +74,7 @@ namespace west::http
 
 	template<>
 	inline auto make_state_handler<read_request_header>(request_header const&, response_header const&)
-	{
-		puts("...Got data");
-		return read_request_header{};
-	}
+	{ return read_request_header{}; }
 
 	template<>
 	inline auto make_state_handler<read_request_body>(request_header const& req_header,
@@ -109,21 +82,16 @@ namespace west::http
 	{
 		auto i = req_header.fields.find("Content-Length");
 		if(i == std::end(req_header.fields))
-		{ return request_state_holder{read_request_body{static_cast<size_t>(0)}}; }
+		{ return read_request_body{static_cast<size_t>(0)}; }
 
-		auto length_conv = to_number<size_t>(i->second);
-		if(!length_conv.has_value())
-		{ return request_state_holder{write_error_response{}}; }
-
-		return request_state_holder{read_request_body{*length_conv}};
+		auto const length_conv = to_number<size_t>(i->second);
+		return read_request_body{length_conv.value()};
 	}
 
 	template<>
 	inline auto make_state_handler<write_response_header>(request_header const&,
 		response_header const& resp_header)
-	{
-		return write_response_header{resp_header};
-	}
+	{ return write_response_header{resp_header}; }
 
 	template<>
 	inline auto make_state_handler<write_response_body>(request_header const&,
@@ -140,11 +108,6 @@ namespace west::http
 
 		return write_response_body{*length_conv};
 	}
-
-	template<>
-	inline auto make_state_handler<write_error_response>(request_header const&,
-		response_header const&)
-	{ return write_error_response{}; }
 
 	template<>
 	inline auto make_state_handler<wait_for_data>(request_header const&,
