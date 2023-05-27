@@ -38,7 +38,8 @@ namespace
 					m_request_offset += bytes_to_read;
 					return west::io::read_result{
 						.bytes_read = bytes_to_read,
-						.ec = west::io::operation_result::object_is_still_ready
+						.ec = bytes_to_read != 0 ? west::io::operation_result::object_is_still_ready
+							: west::io::operation_result::completed
 					};
 				}
 				else
@@ -73,6 +74,8 @@ namespace
 
 		void stop_reading()
 		{ m_endpoint_status |= SERVER_READ_CLOSED; }
+
+		bool server_read_closed() const { return m_endpoint_status & SERVER_READ_CLOSED; }
 
 		void client_stop_read()
 		{ m_endpoint_status |= CLIENT_READ_CLOSED; }
@@ -200,12 +203,24 @@ namespace
 			m_read_offset{std::begin(m_response_body)}
 		{}
 
-		auto finalize_state(west::http::request_header const&)
+		auto finalize_state(west::http::request_header const& header)
 		{
 			puts("Finalize read header");
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = nullptr;
+
+			if(auto const i = header.fields.find("Trigger-Rej-By-App"); i != std::end(header.fields))
+			{
+				if(i->second == "At header validation")
+				{
+					validation_result.http_status = west::http::status::i_am_a_teapot;
+					validation_result.error_message = west::make_unique_cstr("Application requested request to be reject when validating the header");
+				}
+				else
+				{ m_rej_req = true; }
+			}
+
 			return validation_result;
 		}
 
@@ -214,8 +229,16 @@ namespace
 			puts("Finalize read body");
 			west::http::finalize_state_result validation_result;
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
-			validation_result.http_status = west::http::status::i_am_a_teapot;
-			validation_result.error_message = west::make_unique_cstr("Invalid request body");
+			if(m_rej_req)
+			{
+				validation_result.http_status = west::http::status::unprocessable_content;
+				validation_result.error_message = west::make_unique_cstr("Application requested request to be reject when the body was processed");
+			}
+			else
+			{
+				validation_result.http_status = west::http::status::ok;
+				validation_result.error_message = nullptr;
+			}
 			return validation_result;
 		}
 
@@ -256,6 +279,7 @@ namespace
 		std::string_view m_response_body;
 		std::string_view::iterator m_read_offset;
 		std::string m_request;
+		bool m_rej_req{false};
 	};
 }
 
@@ -378,5 +402,94 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_while_read
 "Content-Length: 40\r\n"
 "\r\n"
 "Client claims there is more data to read");
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_fwk)
+{
+	std::string_view request{"GET / HTTP/1.2\r\n"
+"Host: localhost:8000\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{""}};
+	proc.session().connection.request(request);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 505 Http version not supported\r\n"
+"Content-Length: 46\r\n"
+"\r\n"
+"This web server only supports HTTP version 1.1");
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_1)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Trigger-Rej-By-App: At header validation\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{""}};
+	proc.session().connection.request(request);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 418 I am a teapot\r\n"
+"Content-Length: 69\r\n"
+"\r\n"
+"Application requested request to be reject when validating the header");
+			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_2)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Trigger-Rej-By-App: At body competion\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{""}};
+	proc.session().connection.request(request);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 422 Unprocessable content\r\n"
+"Content-Length: 70\r\n"
+"\r\n"
+"Application requested request to be reject when the body was processed");
+			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
 	}
 }

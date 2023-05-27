@@ -42,6 +42,7 @@ namespace west::http
 						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
+						puts("Client error detected");
 						m_session.connection.stop_reading();
 
 						m_session.response_header = response_header{};
