@@ -64,11 +64,23 @@ namespace
 			}
 			else
 			{
-				m_output.insert(std::end(m_output), std::begin(buffer), std::end(buffer));
-				return west::io::write_result{
-					.bytes_written = std::size(buffer),
-					.ec = west::io::operation_result::object_is_still_ready
-				};
+				++m_calls_to_write;
+				if(m_calls_to_write % m_write_blocks_every != 0)
+				{
+					auto const bytes_to_write = std::min(std::size(buffer), static_cast<size_t>(19));
+					std::copy_n(std::begin(buffer), bytes_to_write, std::back_inserter(m_output));
+					return west::io::write_result{
+						.bytes_written = bytes_to_write,
+						.ec = west::io::operation_result::object_is_still_ready
+					};
+				}
+				else
+				{
+					return west::io::write_result{
+						.bytes_written = 0,
+						.ec = west::io::operation_result::operation_would_block
+					};
+				}
 			}
 		}
 
@@ -109,6 +121,11 @@ namespace
 			assert(n >= 2);
 			m_read_blocks_every = n;
 		}
+		void write_blocks(size_t n)
+		{
+			assert(n >= 2);
+			m_write_blocks_every = n;
+		}
 
 	private:
 		uint32_t m_endpoint_status{0};
@@ -125,6 +142,8 @@ namespace
 
 		size_t m_read_blocks_every{65536};
 		size_t m_calls_to_read{0};
+		size_t m_write_blocks_every{65536};
+		size_t m_calls_to_write{0};
 	};
 
 
@@ -297,7 +316,6 @@ TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::io_error);
 }
-
 
 TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_no_response_body)
 {
@@ -516,6 +534,49 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_fail_writing_resp
 "HTTP/1.1 200 Ok\r\n"
 "Content-Length: 12\r\n"
 "\r\n");
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
+	}
+}
+
+TESTCASE(west_http_request_processor_process_socket_valid_request_with_response)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{
+		socket{},
+		request_handler{"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."}
+	};
+
+	proc.session().connection.request(request);
+	proc.session().connection.read_blocks(2);
+	proc.session().connection.write_blocks(3);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 200 Ok\r\n"
+"Content-Length: 469\r\n"
+"\r\n"
+"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis.");
 			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
 			break;
 		}
