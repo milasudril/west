@@ -1,4 +1,6 @@
 @startuml
+west -> west:connection_accepted
+activate request_handler
 west -> request_handler:finalize_state(request_header)
 return validation_result
 alt header accepted
@@ -20,4 +22,6 @@ loop while data available and operation succeeded
 	west -> request_handler:read_response_content([out] current buffer)
 	return read_result
 end
+west -> west:connection_closed
+destroy request_handler
 @enduml
