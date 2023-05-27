@@ -28,12 +28,23 @@ namespace
 			}
 		}
 
-		auto write(std::span<char const>)
+		auto write(std::span<char const> buffer)
 		{
-			return west::io::write_result{
-				.bytes_written = 0,
-				.ec = west::io::operation_result::error
-			};
+			if(m_endpoint_status & WRITE_TRIGGERS_ERROR)
+			{
+				return west::io::write_result{
+					.bytes_written = 0,
+					.ec = west::io::operation_result::error
+				};
+			}
+			else
+			{
+				m_output.insert(std::end(m_output), std::begin(buffer), std::end(buffer));
+				return west::io::write_result{
+					.bytes_written = std::size(buffer),
+					.ec = west::io::operation_result::object_is_still_ready
+				};
+			}
 		}
 
 		void stop_reading()
@@ -45,12 +56,31 @@ namespace
 		void client_stop_write()
 		{ m_endpoint_status |= CLIENT_WRITE_CLOSED; }
 
+		void enable_read_error()
+		{ m_endpoint_status |= READ_TRIGGERS_ERROR; }
+
+		void enable_write_error()
+		{ m_endpoint_status |= WRITE_TRIGGERS_ERROR; }
+
+		auto& output() const
+		{ return m_output; }
+
+		void reset()
+		{
+			m_endpoint_status = 0;
+			m_output.clear();
+		}
+
 	private:
 		uint32_t m_endpoint_status{0};
 		static constexpr uint32_t CLIENT_READ_CLOSED{1};
 		static constexpr uint32_t CLIENT_WRITE_CLOSED{2};
 		static constexpr uint32_t SERVER_READ_CLOSED{4};
 		static constexpr uint32_t SERVER_WRITE_CLOSED{8};
+		static constexpr uint32_t READ_TRIGGERS_ERROR{16};
+		static constexpr uint32_t WRITE_TRIGGERS_ERROR{32};
+
+		std::string m_output;
 	};
 
 
@@ -94,7 +124,7 @@ namespace
 		{
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::bad_request;
-			validation_result.error_message = west::make_unique_cstr("Invalid response body");
+			validation_result.error_message = west::make_unique_cstr("Invalid request body");
 			return validation_result;
 		}
 
@@ -126,7 +156,7 @@ TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 	EXPECT_EQ(res, west::http::request_processor_status::io_error);
 }
 
-TESTCASE(west_http_request_processor_process_socket_connection_closed_early)
+TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_no_response_body)
 {
 	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
 "Host: localhost:8000\r\n"
@@ -140,5 +170,6 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early)
 	west::http::request_processor proc{socket{}, request_handler{}};
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
-	EXPECT_EQ(res, west::http::request_processor_status::io_error);
+	EXPECT_EQ(res, west::http::request_processor_status::completed);
+	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n\r\n");
 }
