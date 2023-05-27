@@ -43,6 +43,7 @@ namespace west::http
 
 					case session_state_status::client_error_detected:
 						m_session.connection.stop_reading();
+						m_state = make_state_handler(m_state, m_session.request_header, m_session.response_header);
 						break;
 
 					case session_state_status::write_response_failed:
@@ -54,17 +55,14 @@ namespace west::http
 			}
 		}
 
-		bool get_conn_keep_alive() const
-		{ return m_session.conn_keep_alive; }
+		auto& session()
+		{ return m_session; }
 
-		size_t get_req_content_length() const
-		{ return m_session.req_content_length; }
-
-		auto const& get_request_handler() const
-		{ return m_session.request_handler; }
+		auto const& session() const
+		{ return m_session; }
 
 	private:
-		session<Socket, RequestHandler> m_session;
+		struct session<Socket, RequestHandler> m_session;
 		request_state_holder m_state;
 		std::unique_ptr<buffer_type> m_recv_buffer;
 		std::unique_ptr<buffer_type> m_send_buffer;

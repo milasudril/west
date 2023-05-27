@@ -12,10 +12,20 @@ namespace
 	public:
 		auto read(std::span<char>)
 		{
-			return west::io::read_result{
-				.bytes_read = 0,
-				.ec = west::io::operation_result::error
-			};
+			if((m_endpoint_status & CLIENT_WRITE_CLOSED) || (m_endpoint_status & SERVER_READ_CLOSED))
+			{
+				return west::io::read_result{
+					.bytes_read = 0,
+					.ec = west::io::operation_result::completed
+				};
+			}
+			else
+			{
+				return west::io::read_result{
+					.bytes_read = 0,
+					.ec = west::io::operation_result::error
+				};
+			}
 		}
 
 		auto write(std::span<char const>)
@@ -27,7 +37,20 @@ namespace
 		}
 
 		void stop_reading()
-		{}
+		{ m_endpoint_status |= SERVER_READ_CLOSED; }
+
+		void client_stop_read()
+		{ m_endpoint_status |= CLIENT_READ_CLOSED; }
+
+		void client_stop_write()
+		{ m_endpoint_status |= CLIENT_WRITE_CLOSED; }
+
+	private:
+		uint32_t m_endpoint_status{0};
+		static constexpr uint32_t CLIENT_READ_CLOSED{1};
+		static constexpr uint32_t CLIENT_WRITE_CLOSED{2};
+		static constexpr uint32_t SERVER_READ_CLOSED{4};
+		static constexpr uint32_t SERVER_WRITE_CLOSED{8};
 	};
 
 
@@ -99,6 +122,23 @@ TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 "purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
 
 	west::http::request_processor proc{socket{}, request_handler{}};
+	auto const res = proc.socket_is_ready();
+	EXPECT_EQ(res, west::http::request_processor_status::io_error);
+}
+
+TESTCASE(west_http_request_processor_process_socket_connection_closed_early)
+{
+	std::string_view serialized_header{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"\r\n"
+"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit "
+"sollicitudin quis. Donec justo massa, euismod a posuere in, finibus a tortor. Curabitur maximus "
+"nibh vitae rhoncus commodo. Maecenas in velit laoreet ipsum tristique sodales nec eget mauris. "
+"Morbi convallis, augue tristique congue facilisis, dui mauris cursus magna, sagittis rhoncus odio "
+"purus id elit. Nunc vel mollis tellus. Pellentesque lacinia mollis turpis tempor mattis."};
+
+	west::http::request_processor proc{socket{}, request_handler{}};
+	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
 	EXPECT_EQ(res, west::http::request_processor_status::io_error);
 }
