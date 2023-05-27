@@ -15,7 +15,7 @@ alt header accepted
 	end
 else
 	west -> west:stop_reading(socket)
-	west -> request_handler:finalize_state([inout] field_map, session_state_response)
+	west -> request_handler:finalize_state([inout] field_map, finalize_state_result)
 	return
 end
 loop while data available and operation succeeded

@@ -263,9 +263,9 @@ namespace
 			return validation_result;
 		}
 
-		void finalize_state(west::http::field_map& fields, west::http::session_state_response&& res)
+		void finalize_state(west::http::field_map& fields, west::http::finalize_state_result&& res)
 		{
-			m_error_message = std::move(res.state_result.error_message);
+			m_error_message = std::move(res.error_message);
 			m_response_body = std::string_view{m_error_message.get()};
 			m_read_offset = std::begin(m_response_body);
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)));

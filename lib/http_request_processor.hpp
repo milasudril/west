@@ -42,17 +42,20 @@ namespace west::http
 						return request_processor_status::more_data_needed;
 
 					case session_state_status::client_error_detected:
-						puts("Client error detected");
+					{
 						m_session.connection.stop_reading();
 
 						m_session.response_header = response_header{};
-						m_session.request_handler.finalize_state(m_session.response_header.fields, std::move(res));
+						auto const saved_http_status = res.state_result.http_status;
+						m_session.request_handler.finalize_state(m_session.response_header.fields,
+							std::move(res.state_result));
 						m_session.response_header.status_line.http_version = version{1, 1};
-						m_session.response_header.status_line.status_code = res.state_result.http_status;
-						m_session.response_header.status_line.reason_phrase = to_string(res.state_result.http_status);
+						m_session.response_header.status_line.status_code = saved_http_status;
+						m_session.response_header.status_line.reason_phrase = to_string(saved_http_status);
 
 						m_state = write_response_header{m_session.response_header};
 						break;
+					}
 
 					case session_state_status::write_response_failed:
 						return request_processor_status::application_error;
