@@ -1,29 +1,23 @@
 @startuml
-west -> request_handler:validate_header
-return
-loop while data available
-	west -> request_handler:write_request_body
-	return write result
-	opt failure
-		ref over west
-			Request handling failure
-		end ref
+west -> request_handler:finalize_state(request_header)
+return validation_result
+alt header accepted
+	loop while data available and operation succeeded
+		west -> request_handler:process_request_body(current buffer)
+		return write_result
 	end
-end
-west -> request_handler:get_response_header
-return response header
-loop while data available
-	west -> request_handler:read_request_body
-	return read result
-	opt failure
-		ref over west
-			Request handling failure
-		end ref
+	west -> request_handler:finalize_state([inout] field_map)
+	return validation_result
+	opt request not accepted
+		west -> west:stop_reading(socket)
 	end
+else
+	west -> west:stop_reading(socket)
+	west -> request_handler:finalize_state([inout] field_map, session_state_response)
+	return
 end
-opt Keep-alive not possible or not requested
-	ref over west
-		Close connection
-	end ref
+loop while data available and operation succeeded
+	west -> request_handler:read_response_content([out] current buffer)
+	return read_result
 end
 @enduml
