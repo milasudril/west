@@ -3,6 +3,7 @@
 
 #include "./io_fd.hpp"
 #include "./system_error.hpp"
+#include "./io_interfaces.hpp"
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -80,11 +81,52 @@ namespace west::io
 			m_remote_port{remote_port}
 		{}
 
-		auto remote_port() const
+		[[nodiscard]] auto remote_port() const
 		{ return m_remote_port; }
 
-		auto remote_address() const
+		[[nodiscard]] auto remote_address() const
 		{ return m_remote_address; }
+
+		[[nodiscard]] read_result read(std::span<char> buffer)
+		{
+			auto res = ::read(m_fd.get(), std::data(buffer), std::size(buffer));
+			if(res == -1)
+			{
+				return read_result{
+					.bytes_read = 0,
+					.ec = (errno == EAGAIN || errno == EWOULDBLOCK)?
+						operation_result::operation_would_block:
+						operation_result::error
+				};
+			}
+
+			return read_result{
+				.bytes_read = static_cast<size_t>(res),
+				.ec = operation_result::object_is_still_ready
+			};
+		}
+
+		[[nodiscard]] write_result write(std::span<char const> buffer)
+		{
+			auto res = ::write(m_fd.get(), std::data(buffer), std::size(buffer));
+			if(res == -1)
+			{
+				return write_result{
+					.bytes_written = 0,
+					.ec = (errno == EAGAIN || errno == EWOULDBLOCK)?
+						operation_result::operation_would_block:
+						operation_result::error
+				};
+			}
+
+			return write_result{
+				.bytes_written = static_cast<size_t>(res),
+				.ec = operation_result::object_is_still_ready
+			};
+		}
+
+		void stop_reading()
+		{ ::shutdown(m_fd.get(), SHUT_RD); }
 
 	private:
 		fd_owner m_fd;
@@ -98,7 +140,7 @@ namespace west::io
 		explicit inet_server_socket(inet_address client_address,
 			std::ranges::iota_view<int, int> ports_to_try,
 			int listen_backlock):
-			m_fd{socket(AF_INET, SOCK_STREAM, 0)}
+			m_fd{create_socket(AF_INET, SOCK_STREAM, 0)}
 		{
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create socket", errno}; }

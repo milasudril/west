@@ -45,7 +45,7 @@ namespace west::io
 	{ return fd_owner{::open(std::forward<Args>(args)...)}; }
 
 	template<class ... Args>
-	[[nodiscard]] auto socket(Args&& ... args)
+	[[nodiscard]] auto create_socket(Args&& ... args)
 	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
 }
 

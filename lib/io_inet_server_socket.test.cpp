@@ -8,7 +8,7 @@
 
 TESTCASE(west_io_inet_server_socket_bind_succesful)
 {
-	auto socket = west::io::socket(AF_INET, SOCK_STREAM, 0);
+	auto socket = west::io::create_socket(AF_INET, SOCK_STREAM, 0);
 
 	EXPECT_NE(socket, nullptr);
 	auto port = bind(socket.get(),
@@ -22,7 +22,7 @@ TESTCASE(west_io_inet_server_socket_bind_succesful)
 
 TESTCASE(west_io_inet_server_socket_bind_failed)
 {
-	auto socket = west::io::socket(AF_INET, SOCK_STREAM, 0);
+	auto socket = west::io::create_socket(AF_INET, SOCK_STREAM, 0);
 
 	EXPECT_NE(socket, nullptr);
 
@@ -55,7 +55,7 @@ TESTCASE(west_io_inet_server_socket_accept_connection)
 
 	std::jthread client{
 		[port = server.port(), address](){
-			auto socket = west::io::socket(AF_INET, SOCK_STREAM, 0);
+			auto socket = west::io::create_socket(AF_INET, SOCK_STREAM, 0);
 			sockaddr_in addr{};
 			addr.sin_family = AF_INET;
 			addr.sin_port = htons(port);
@@ -66,15 +66,28 @@ TESTCASE(west_io_inet_server_socket_accept_connection)
 				sizeof(addr));
 
 			REQUIRE_NE(res, -1);
-/*
-			std::array<char, 12> buffer{};
-			auto const n = ::read(socket, std::data(buffer), std::size(buffer));
-			EXPECT_EQ(n, std::size(buffer));
-			EXPECT_EQ(std::string_view{std::data(buffer), 12}, "Hello, World");
-*/
+
+			std::string_view msg_out{"Ping"};
+			auto const n_written = ::write(socket.get(), std::data(msg_out), std::size(msg_out));
+			EXPECT_EQ(static_cast<size_t>(n_written), std::size(msg_out));
+
+			std::array<char, 4> msg_in{};
+			auto const n_read = ::read(socket.get(), std::data(msg_in), std::size(msg_in));
+			EXPECT_EQ(static_cast<size_t>(n_read), std::size(msg_in));
+			EXPECT_EQ((std::string_view{std::data(msg_in), std::size(msg_in)}), "Pong");
 		}
 	};
 
-	auto const connection = server.accept();
+	auto connection = server.accept();
+	static_assert(west::io::socket<decltype(connection)>);
 	EXPECT_EQ(connection.remote_address(), address);
+
+	std::array<char, 4> msg_in{};
+	auto const read_res = connection.read(msg_in);
+	EXPECT_EQ(read_res.bytes_read, std::size(msg_in));
+	EXPECT_EQ((std::string_view{std::data(msg_in), std::size(msg_in)}), "Ping");
+
+	std::string_view msg_out{"Pong"};
+	auto const write_res = connection.write(msg_out);
+	EXPECT_EQ(write_res.bytes_written, std::size(msg_out));
 }
