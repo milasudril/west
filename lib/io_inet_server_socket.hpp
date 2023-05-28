@@ -27,9 +27,23 @@ namespace west::io
 		auto value() const
 		{ return m_value; }
 
+		bool operator==(inet_address other) const
+		{ return m_value.s_addr == other.m_value.s_addr; }
+
+		bool operator!=(inet_address other) const
+		{ return m_value.s_addr != other.m_value.s_addr; }
+
 	private:
 		in_addr m_value;
 	};
+
+	[[nodiscard]] inline auto to_string(inet_address addr)
+	{
+		auto const val = addr.value();
+		std::array<char, 17> buffer{};
+		inet_ntop(AF_INET, &val, std::data(buffer), 16);
+		return std::string{std::data(buffer)};
+	}
 
 	[[nodiscard]] inline auto try_bind(fd socket, inet_address client_address, uint16_t port)
 	{
@@ -54,7 +68,7 @@ namespace west::io
 		if(i == std::end(ports_to_try))
 		{ throw system_error{"Failed to bind socket", errno}; }
 
-		return *i;
+		return static_cast<uint16_t>(*i);
 	}
 
 	class inet_connection
@@ -65,6 +79,12 @@ namespace west::io
 			m_remote_address{remote_address},
 			m_remote_port{remote_port}
 		{}
+
+		auto remote_port() const
+		{ return m_remote_port; }
+
+		auto remote_address() const
+		{ return m_remote_address; }
 
 	private:
 		fd_owner m_fd;
@@ -83,7 +103,7 @@ namespace west::io
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create socket", errno}; }
 
-			bind(m_fd.get(), client_address, ports_to_try);
+			m_port = bind(m_fd.get(), client_address, ports_to_try);
 
 			if(::listen(m_fd.get(), listen_backlock) == -1)
 			{ throw system_error{"Failed to listen on socket", errno}; }
@@ -105,8 +125,12 @@ namespace west::io
 			};
 		}
 
+		uint16_t port() const
+		{ return m_port; }
+
 	private:
 		fd_owner m_fd;
+		uint16_t m_port;
 	};
 }
 
