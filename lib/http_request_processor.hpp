@@ -32,7 +32,7 @@ namespace west::http
 				switch(res.status)
 				{
 					case session_state_status::completed:
-						m_state = make_state_handler(m_state, m_session.request_info.header, m_session.response_info.header);
+						m_state = make_state_handler(m_state, m_session.request_info, m_session.response_info);
 						break;
 
 					case session_state_status::connection_closed:

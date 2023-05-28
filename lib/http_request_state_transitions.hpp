@@ -70,18 +70,18 @@ namespace west::http
 
 
 	template<class T>
-	inline auto make_state_handler(request_header const&, response_header const&);
+	inline auto make_state_handler(request_info const&, response_info const&);
 
 	template<>
-	inline auto make_state_handler<read_request_header>(request_header const&, response_header const&)
+	inline auto make_state_handler<read_request_header>(request_info const&, response_info const&)
 	{ return read_request_header{}; }
 
 	template<>
-	inline auto make_state_handler<read_request_body>(request_header const& req_header,
-		response_header const&)
+	inline auto make_state_handler<read_request_body>(request_info const& request,
+		response_info const&)
 	{
-		auto i = req_header.fields.find("Content-Length");
-		if(i == std::end(req_header.fields))
+		auto i = request.header.fields.find("Content-Length");
+		if(i == std::end(request.header.fields))
 		{ return read_request_body{static_cast<size_t>(0)}; }
 
 		auto const length_conv = to_number<size_t>(i->second);
@@ -89,18 +89,18 @@ namespace west::http
 	}
 
 	template<>
-	inline auto make_state_handler<write_response_header>(request_header const&,
-		response_header const& resp_header)
-	{ return write_response_header{resp_header}; }
+	inline auto make_state_handler<write_response_header>(request_info const&,
+		response_info const& response)
+	{ return write_response_header{response.header}; }
 
 	template<>
-	inline auto make_state_handler<write_response_body>(request_header const&,
-		response_header const& resp_header)
+	inline auto make_state_handler<write_response_body>(request_info const&,
+		response_info const& response)
 	{
-		assert(!resp_header.fields.contains("Transfer-encoding"));
+		assert(!response.header.fields.contains("Transfer-encoding"));
 
-		auto i = resp_header.fields.find("Content-Length");
-		if(i == std::end(resp_header.fields))
+		auto i = response.header.fields.find("Content-Length");
+		if(i == std::end(response.header.fields))
 		{ return write_response_body{static_cast<size_t>(0)}; }
 
 		auto length_conv = to_number<size_t>(i->second);
@@ -110,19 +110,19 @@ namespace west::http
 	}
 
 	template<>
-	inline auto make_state_handler<wait_for_data>(request_header const&,
-		response_header const&)
+	inline auto make_state_handler<wait_for_data>(request_info const&,
+		response_info const&)
 	{ return wait_for_data{}; }
 
 
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
-		request_header const& req_header,
-		response_header const& resp_header)
+		request_info const& request,
+		response_info const& response)
 	{
-		return std::visit([&req_header, resp_header]<class T>(T const&) {
+		return std::visit([&request, response]<class T>(T const&) {
 			using next_state_handler = next_request_state<T>::state_handler;
-			return request_state_holder{ make_state_handler<next_state_handler>(req_header, resp_header)};
+			return request_state_holder{make_state_handler<next_state_handler>(request, response)};
 		}, initial_state);
 	}
 }
