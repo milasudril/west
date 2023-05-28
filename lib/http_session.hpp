@@ -29,7 +29,6 @@ namespace west::http
 	struct response_info
 	{
 		response_header header;
-		size_t content_length{0};
 	};
 
 	template<class Socket, class RequestHandler>

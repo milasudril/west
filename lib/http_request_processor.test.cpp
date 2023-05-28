@@ -148,7 +148,6 @@ namespace
 
 
 
-
 	enum class request_handler_error_code{no_error, would_block, error};
 
 	struct read_result
@@ -201,6 +200,8 @@ namespace
 				__builtin_unreachable();
 		}
 	}
+
+
 
 	struct request_handler_write_result
 	{
