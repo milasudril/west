@@ -28,7 +28,7 @@ namespace west::io
 		in_addr m_value;
 	};
 
-	inline auto try_bind(fd socket, inet_address client_address, uint16_t port)
+	[[nodiscard]] inline auto try_bind(fd socket, inet_address client_address, uint16_t port)
 	{
 		sockaddr_in sock_addr{};
 		sock_addr.sin_family = AF_INET;

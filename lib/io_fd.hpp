@@ -41,11 +41,11 @@ namespace west::io
 	using fd_owner = std::unique_ptr<fd, fd_deleter>;
 
 	template<class ... Args>
-	auto open(Args&& ... args)
+	[[nodiscard]] auto open(Args&& ... args)
 	{ return fd_owner{::open(std::forward<Args>(args)...)}; }
 
 	template<class ... Args>
-	auto socket(Args&& ... args)
+	[[nodiscard]] auto socket(Args&& ... args)
 	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
 }
 
