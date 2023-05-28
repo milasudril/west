@@ -2,6 +2,7 @@
 #define WEST_IO_INET_SERVER_SOCKET_HPP
 
 #include "./io_fd.hpp"
+#include "./system_error.hpp"
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -15,6 +16,8 @@ namespace west::io
 	class inet_address
 	{
 	public:
+		explicit inet_address(in_addr value): m_value{value}{}
+
 		explicit inet_address(char const* str)
 		{
 			if(inet_aton(str, &m_value) == 0)
@@ -49,15 +52,62 @@ namespace west::io
 		});
 
 		if(i == std::end(ports_to_try))
-		{
-			throw std::runtime_error{
-				std::string{"Failed to bind socket: "}
-					.append(strerrordesc_np(errno))
-			};
-		}
+		{ throw system_error{"Failed to bind socket", errno}; }
 
 		return *i;
 	}
+
+	class inet_connection
+	{
+	public:
+		explicit inet_connection(fd_owner fd, inet_address remote_address, uint16_t remote_port):
+			m_fd{std::move(fd)},
+			m_remote_address{remote_address},
+			m_remote_port{remote_port}
+		{}
+
+	private:
+		fd_owner m_fd;
+		inet_address m_remote_address;
+		uint16_t m_remote_port;
+	};
+
+	class inet_server_socket
+	{
+	public:
+		explicit inet_server_socket(inet_address client_address,
+			std::ranges::iota_view<int, int> ports_to_try,
+			int listen_backlock):
+			m_fd{socket(AF_INET, SOCK_STREAM, 0)}
+		{
+			if(m_fd == nullptr)
+			{ throw system_error{"Failed to create socket", errno}; }
+
+			bind(m_fd.get(), client_address, ports_to_try);
+
+			if(::listen(m_fd.get(), listen_backlock) == -1)
+			{ throw system_error{"Failed to listen on socket", errno}; }
+
+		}
+
+		inet_connection accept() const
+		{
+			sockaddr_in client_addr{};
+			socklen_t addr_length = sizeof(client_addr);
+			fd_owner fd{::accept(m_fd.get(), reinterpret_cast<sockaddr*>(&client_addr), &addr_length)};
+			if(fd.get() == nullptr)
+			{ throw system_error{"Failed to establish a connection", errno}; }
+
+			return inet_connection{
+				std::move(fd),
+				inet_address{client_addr.sin_addr},
+				client_addr.sin_port
+			};
+		}
+
+	private:
+		fd_owner m_fd;
+	};
 }
 
 #endif
