@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 
 #include <memory>
@@ -12,21 +13,21 @@ namespace west::io
 {
 	struct fd
 	{
-		fd():m_value{-1}{}
-		fd(int value) : m_value{value} {}
-		fd(std::nullptr_t) : m_value{-1} {}
+		fd():value{-1}{}
+		fd(int val) : value{val} {}
+		fd(std::nullptr_t) : value{-1} {}
 
-		operator int() const {return m_value;}
+		operator int() const {return value;}
 
 		bool operator ==(const fd& other) const = default;
 		bool operator !=(const fd& other) const = default;
 
-		bool operator ==(std::nullptr_t) const {return m_value == -1;}
-		bool operator !=(std::nullptr_t) const {return m_value != -1;}
+		bool operator ==(std::nullptr_t) const {return value == -1;}
+		bool operator !=(std::nullptr_t) const {return value != -1;}
 
-		operator bool() const { return m_value != -1; }
+		operator bool() const { return value != -1; }
 
-		int m_value;
+		int value;
 	};
 
 	struct fd_deleter
@@ -42,6 +43,10 @@ namespace west::io
 	template<class ... Args>
 	auto open(Args&& ... args)
 	{ return fd_owner{::open(std::forward<Args>(args)...)}; }
+
+	template<class ... Args>
+	auto socket(Args&& ... args)
+	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
 }
 
 #endif
