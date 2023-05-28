@@ -455,7 +455,6 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_fwk)
 	}
 }
 
-#if 0
 TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_not_a_number)
 {
 	std::string_view request{"GET / HTTP/1.1\r\n"
@@ -473,9 +472,10 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_no
 			EXPECT_EQ(res, west::http::request_processor_status::completed);
 			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
 			EXPECT_EQ(proc.session().connection.output(),
-"HTTP/1.1 500 Internal server error\r\n"
-"Content-Length: 0\r\n"
-"\r\n");
+"HTTP/1.1 400 Bad request\r\n"
+"Content-Length: 18\r\n"
+"\r\n"
+"Bad content-length");
 			break;
 		}
 		else
@@ -484,7 +484,6 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_no
 		}
 	}
 }
-#endif
 
 TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_1)
 {

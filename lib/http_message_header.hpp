@@ -1,6 +1,8 @@
 #ifndef WEST_HTTP_MESSAGE_HEADER_HPP
 #define WEST_HTTP_MESSAGE_HEADER_HPP
 
+#include "./utils.hpp"
+
 #include <string>
 #include <map>
 #include <cstdint>
@@ -415,6 +417,15 @@ namespace west::http
 		std::map<field_name, std::string, std::less<>> m_fields;
 	};
 
+	auto get_content_length(field_map const& fields)
+	{
+		auto i = fields.find("Content-Length");
+		if(i == std::end(fields))
+		{ return std::optional<size_t>{0}; }
+
+		return to_number<size_t>(i->second);
+	}
+
 	struct request_line
 	{
 		request_method method;
@@ -428,6 +439,9 @@ namespace west::http
 		field_map fields;
 	};
 
+	inline auto get_content_length(request_header const& header)
+	{ return get_content_length(header.fields); }
+
 	struct status_line
 	{
 		version http_version;
@@ -440,6 +454,11 @@ namespace west::http
 		struct status_line status_line;
 		field_map fields;
 	};
+
+	inline auto get_content_length(response_header const& header)
+	{ return get_content_length(header.fields); }
+
+
 }
 
 #endif

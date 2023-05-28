@@ -85,8 +85,22 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 							};
 						}
 
+						// TODO: Introduce limit on content-length here
+						auto const content_length = get_content_length(header);
+						if(!content_length.has_value())
+						{
+							return session_state_response{
+								.status = session_state_status::client_error_detected,
+								.state_result = finalize_state_result{
+									.http_status = status::bad_request,
+									.error_message = make_unique_cstr("Bad content-length")
+								}
+							};
+						}
+
 						auto res = session.request_handler.finalize_state(header);
 						session.request_info.header = std::move(header);
+						session.request_info.content_length = *content_length;
 						auto const saved_http_status = res.http_status;
 						return session_state_response{
 							.status = is_client_error(saved_http_status) ?
