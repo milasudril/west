@@ -18,11 +18,17 @@ namespace west::http
 		client_error_detected,
 		write_response_failed,
 		io_error
-		};
+	};
 
 	struct request_info
 	{
 		request_header header;
+		size_t content_length{0};
+	};
+
+	struct response_info
+	{
+		response_header header;
 		size_t content_length{0};
 	};
 
@@ -32,7 +38,7 @@ namespace west::http
 		Socket connection;
 		RequestHandler request_handler;
 		struct request_info request_info;
-		class response_header response_header;
+		struct response_info response_info;
 	};
 
 	struct session_state_response

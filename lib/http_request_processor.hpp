@@ -32,7 +32,7 @@ namespace west::http
 				switch(res.status)
 				{
 					case session_state_status::completed:
-						m_state = make_state_handler(m_state, m_session.request_info.header, m_session.response_header);
+						m_state = make_state_handler(m_state, m_session.request_info.header, m_session.response_info.header);
 						break;
 
 					case session_state_status::connection_closed:
@@ -45,15 +45,15 @@ namespace west::http
 					{
 						m_session.connection.stop_reading();
 
-						m_session.response_header = response_header{};
+						m_session.response_info = response_info{};
 						auto const saved_http_status = res.state_result.http_status;
-						m_session.request_handler.finalize_state(m_session.response_header.fields,
+						m_session.request_handler.finalize_state(m_session.response_info.header.fields,
 							std::move(res.state_result));
-						m_session.response_header.status_line.http_version = version{1, 1};
-						m_session.response_header.status_line.status_code = saved_http_status;
-						m_session.response_header.status_line.reason_phrase = to_string(saved_http_status);
+						m_session.response_info.header.status_line.http_version = version{1, 1};
+						m_session.response_info.header.status_line.status_code = saved_http_status;
+						m_session.response_info.header.status_line.reason_phrase = to_string(saved_http_status);
 
-						m_state = write_response_header{m_session.response_header};
+						m_state = write_response_header{m_session.response_info.header};
 						break;
 					}
 

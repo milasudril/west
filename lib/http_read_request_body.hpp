@@ -54,13 +54,13 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				};
 			},
 			[&session](){
-				session.response_header = response_header{};
-				auto res = session.request_handler.finalize_state(session.response_header.fields);
+				session.response_info = response_info{};
+				auto res = session.request_handler.finalize_state(session.response_info.header.fields);
 
-				session.response_header.status_line.http_version = version{1, 1};
+				session.response_info.header.status_line.http_version = version{1, 1};
 				auto const saved_http_status = res.http_status;
-				session.response_header.status_line.status_code = saved_http_status;
-				session.response_header.status_line.reason_phrase = to_string(saved_http_status);
+				session.response_info.header.status_line.status_code = saved_http_status;
+				session.response_info.header.status_line.reason_phrase = to_string(saved_http_status);
 
 				// TODO: What if request handler want to push some kind of Internal Server Error?
 				return session_state_response{

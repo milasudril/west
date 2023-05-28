@@ -95,9 +95,9 @@ TESTCASE(http_read_request_body_read_all_data)
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Hej"});
-	EXPECT_EQ(session.response_header.status_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.response_header.status_line.reason_phrase, "Accepted");
-	EXPECT_EQ(session.response_header.fields.find("Kaka")->second, "Foobar");
+	EXPECT_EQ(session.response_info.header.status_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(session.response_info.header.status_line.reason_phrase, "Accepted");
+	EXPECT_EQ(session.response_info.header.fields.find("Kaka")->second, "Foobar");
 	EXPECT_EQ(session.request_handler.data_processed, src.get_data().substr(0, message_size));
 	EXPECT_EQ(buff_span.span_to_read()[0], 'S');
 }
@@ -225,6 +225,6 @@ TESTCASE(http_read_request_body_read_req_handler_rej_in_finalize)
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::i_am_a_teapot);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Hej"});
-	EXPECT_EQ(session.response_header.status_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.response_header.status_line.reason_phrase, "I am a teapot");
+	EXPECT_EQ(session.response_info.header.status_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(session.response_info.header.status_line.reason_phrase, "I am a teapot");
 }
