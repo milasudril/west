@@ -1,9 +1,12 @@
 @startuml
+autoactivate on
 west -> west:connection_accepted
-activate request_handler
+return
+== Read request header ==
 west -> request_handler:finalize_state(request_header)
 return validation_result
 alt header accepted
+== Read request body ==
 	loop while data available and operation succeeded
 		west -> request_handler:process_request_body(current buffer)
 		return write_result
@@ -12,16 +15,22 @@ alt header accepted
 	return validation_result
 	opt request not accepted
 		west -> west:stop_reading(socket)
+		return
 	end
 else
 	west -> west:stop_reading(socket)
+	return
 	west -> request_handler:finalize_state([inout] field_map, finalize_state_result)
 	return
 end
+== Write response header ==
+== Write response body ==
 loop while data available and operation succeeded
 	west -> request_handler:read_response_content([out] current buffer)
 	return read_result
 end
+== Wait for data ==
 west -> west:connection_closed
+return
 destroy request_handler
 @enduml
