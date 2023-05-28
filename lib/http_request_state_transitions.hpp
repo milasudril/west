@@ -79,14 +79,7 @@ namespace west::http
 	template<>
 	inline auto make_state_handler<read_request_body>(request_info const& request,
 		response_info const&)
-	{
-		auto i = request.header.fields.find("Content-Length");
-		if(i == std::end(request.header.fields))
-		{ return read_request_body{static_cast<size_t>(0)}; }
-
-		auto const length_conv = to_number<size_t>(i->second);
-		return read_request_body{length_conv.value()};
-	}
+	{ return read_request_body{request.content_length}; }
 
 	template<>
 	inline auto make_state_handler<write_response_header>(request_info const&,
