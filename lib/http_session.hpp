@@ -18,6 +18,12 @@ namespace west::http
 		client_error_detected,
 		write_response_failed,
 		io_error
+		};
+
+	struct request_info
+	{
+		request_header header;
+		size_t content_length{0};
 	};
 
 	template<class Socket, class RequestHandler>
@@ -25,7 +31,7 @@ namespace west::http
 	{
 		Socket connection;
 		RequestHandler request_handler;
-		class request_header request_header;
+		struct request_info request_info;
 		class response_header response_header;
 	};
 

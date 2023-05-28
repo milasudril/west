@@ -86,7 +86,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						}
 
 						auto res = session.request_handler.finalize_state(header);
-						session.request_header = std::move(header);
+						session.request_info.header = std::move(header);
 						auto const saved_http_status = res.http_status;
 						return session_state_response{
 							.status = is_client_error(saved_http_status) ?

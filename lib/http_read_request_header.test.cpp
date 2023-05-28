@@ -35,16 +35,16 @@ TESTCASE(west_http_read_request_header_read_successful_with_data_after_header)
 	src.read(std::span{std::data(buffer), 3});
 	buff_span.reset_with_new_length(3);
 
-	west::http::session session{src, request_handler{}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"This string comes from the test case"});
-	EXPECT_EQ(session.request_header.request_line.method, "GET");
-	EXPECT_EQ(session.request_header.request_line.request_target, "/");
-	EXPECT_EQ(session.request_header.request_line.http_version, (west::http::version{1, 1}));
-	EXPECT_EQ(session.request_header.fields.find("host")->second, "localhost:80");
+	EXPECT_EQ(session.request_info.header.request_line.method, "GET");
+	EXPECT_EQ(session.request_info.header.request_line.request_target, "/");
+	EXPECT_EQ(session.request_info.header.request_line.http_version, (west::http::version{1, 1}));
+	EXPECT_EQ(session.request_info.header.fields.find("host")->second, "localhost:80");
 	auto const remaining_data = buff_span.span_to_read();
 	EXPECT_EQ((std::string_view{std::begin(remaining_data), std::end(remaining_data)}), "Some");
 	EXPECT_EQ(std::string_view{session.connection.get_pointer()}, " content after header");
@@ -60,7 +60,7 @@ TESTCASE(west_http_read_request_header_read_incomplete_at_eof)
 	west::stubs::data_source src{std::string_view{"GET / HTTP/1.1\r\n"
 "host: localhost:80\r\n\r"}};
 
-	west::http::session session{src, request_handler{}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	auto res = reader(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
@@ -76,7 +76,7 @@ TESTCASE(west_http_read_request_header_read_unsupported_http_version)
 	west::stubs::data_source src{std::string_view{"GET / HTTP/1.5\r\n"
 "host: localhost:80\r\n\r\n"}};
 
-	west::http::session session{src, request_handler{}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
 	auto res = reader(buff_span, session);
 
@@ -96,7 +96,7 @@ TESTCASE(west_http_read_request_header_read_successful_fail_in_req_handler)
 	west::stubs::data_source src{std::string_view{"GET / HTTP/1.1\r\n"
 "host: localhost:80\r\n\r\n"}};
 
-	west::http::session session{src, request_handler{west::http::status::not_found}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{west::http::status::not_found}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
 	auto res = reader(buff_span, session);
 
@@ -115,7 +115,7 @@ TESTCASE(west_http_read_request_header_read_bad_header)
 	west::stubs::data_source src{std::string_view{"GET / FTP/1.1\r\n"
 "host: localhost:80\r\n\r\n"}};
 
-	west::http::session session{src, request_handler{}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
 	auto res = reader(buff_span, session);
 
@@ -136,7 +136,7 @@ TESTCASE(west_http_read_request_header_read_oversized_header)
 	west::stubs::data_source src{std::string_view{"GET / HTTP/1.1\r\n"
 "host: localhost:80\r\n\r\n"}};
 
-	west::http::session session{src, request_handler{}, west::http::request_header{}, west::http::response_header{}};
+	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer()) - 3};
 	auto res = reader(buff_span, session);
 

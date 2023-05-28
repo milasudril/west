@@ -455,6 +455,37 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_fwk)
 	}
 }
 
+#if 0
+TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_not_a_number)
+{
+	std::string_view request{"GET / HTTP/1.1\r\n"
+"Host: localhost:8000\r\n"
+"Content-Length: Foobar\r\n"
+"\r\n"};
+
+	west::http::request_processor proc{socket{}, request_handler{""}};
+	proc.session().connection.request(request);
+	while(true)
+	{
+		auto const res = proc.socket_is_ready();
+		if(res != west::http::request_processor_status::more_data_needed)
+		{
+			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
+			EXPECT_EQ(proc.session().connection.output(),
+"HTTP/1.1 500 Internal server error\r\n"
+"Content-Length: 0\r\n"
+"\r\n");
+			break;
+		}
+		else
+		{
+			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
+		}
+	}
+}
+#endif
+
 TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_1)
 {
 	std::string_view request{"GET / HTTP/1.1\r\n"

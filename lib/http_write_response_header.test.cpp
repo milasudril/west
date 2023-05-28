@@ -44,7 +44,7 @@ TESTCASE(west_http_write_response_header_write_completed)
 	std::string output_buffer;
 	west::http::session session{data_sink{output_buffer},
 		request_handler{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 
@@ -92,7 +92,7 @@ TESTCASE(west_http_write_response_header_connection_closed)
 	std::string output_buffer;
 	west::http::session session{data_sink{output_buffer, west::io::operation_result::completed},
 		request_handler{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 

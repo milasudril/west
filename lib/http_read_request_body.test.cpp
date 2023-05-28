@@ -85,7 +85,7 @@ TESTCASE(http_read_request_body_read_all_data)
 
 	west::http::session session{src,
 		request_handler<test_result::completed>{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 	auto const message_size = src.get_data().size() - 21;
@@ -122,7 +122,7 @@ TESTCASE(http_read_request_body_read_early_eof)
 
 	west::http::session session{src,
 		request_handler<test_result::completed>{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 	auto const message_size = src.get_data().size() + 23;
@@ -153,7 +153,7 @@ TESTCASE(http_read_request_body_read_req_handler_fails_to_read)
 
 	west::http::session session{src,
 		request_handler<test_result::error>{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 	auto const message_size = src.get_data().size() - 21;
@@ -184,7 +184,7 @@ TESTCASE(http_read_request_body_read_req_handler_blocks_when_reading)
 
 	west::http::session session{src,
 		request_handler<test_result::is_blocked>{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 	auto const message_size = src.get_data().size() - 21;
@@ -215,7 +215,7 @@ TESTCASE(http_read_request_body_read_req_handler_rej_in_finalize)
 
 	west::http::session session{src,
 		request_handler<test_result::completed, true>{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 	auto const message_size = src.get_data().size() - 21;

@@ -15,7 +15,7 @@ namespace west::http
 
 	public:
 		explicit request_processor(Socket&& connection, RequestHandler&& req_handler = RequestHandler{}):
-			m_session{std::move(connection), std::move(req_handler), request_header{}, response_header{}},
+			m_session{std::move(connection), std::move(req_handler), request_info{}, response_header{}},
 			m_recv_buffer{std::make_unique<buffer_type>()},
 			m_send_buffer{std::make_unique<buffer_type>()},
 			m_buff_spans{buffer_span{*m_recv_buffer}, buffer_span{*m_send_buffer}}
@@ -32,7 +32,7 @@ namespace west::http
 				switch(res.status)
 				{
 					case session_state_status::completed:
-						m_state = make_state_handler(m_state, m_session.request_header, m_session.response_header);
+						m_state = make_state_handler(m_state, m_session.request_info.header, m_session.response_header);
 						break;
 
 					case session_state_status::connection_closed:

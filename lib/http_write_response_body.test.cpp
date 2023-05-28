@@ -152,7 +152,7 @@ TESTCASE(http_write_response_body_write_all_data)
 
 	west::http::session session{sink{},
 		request_handler{src},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 
@@ -183,7 +183,7 @@ TESTCASE(http_write_response_body_write_failed)
 
 	west::http::session session{bad_sink{},
 		request_handler{src},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 
@@ -213,7 +213,7 @@ TESTCASE(http_write_response_body_blocking_request_handler)
 
 	west::http::session session{sink{},
 		blocking_request_handler{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 
@@ -243,7 +243,7 @@ TESTCASE(http_write_response_body_failing_request_handler)
 
 	west::http::session session{sink{},
 		failing_request_handler{},
-		west::http::request_header{},
+		west::http::request_info{},
 		west::http::response_header{}
 	};
 
