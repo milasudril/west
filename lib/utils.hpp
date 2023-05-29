@@ -38,6 +38,16 @@ namespace west
 		using Args::operator() ...;
 	};
 
+	using type_erased_ptr = std::unique_ptr<void, void(*)(void*)>;
+
+	template<class T, class ... Args>
+	auto make_type_erased_ptr(Args&& ... args)
+	{
+		return type_erased_ptr{new T{std::forward<Args>(args)...}, [](void* obj){
+			delete static_cast<T*>(obj);
+		}};
+	}
+
 	template<class ReturnType>
 	[[noreturn]] ReturnType abort()
 	{ ::abort(); }
