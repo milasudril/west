@@ -37,18 +37,20 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	auto const read_result = session.connection.read(buffer.span_to_write());
 	buffer.reset_with_new_length(read_result.bytes_read);
 
+	if(read_result.bytes_read == 0)
+	{
+		return session_state_response{
+			.status = session_state_status::connection_closed,
+			.state_result = finalize_state_result{
+				.http_status = status::ok,
+				.error_message = nullptr
+			}
+		};
+	}
+
 	switch(read_result.ec)
 	{
 		case io::operation_result::completed:
-			return session_state_response{
-				.status = session_state_status::connection_closed,
-				.state_result = finalize_state_result{
-					.http_status = status::ok,
-					.error_message = nullptr
-				}
-			};
-
-		case io::operation_result::object_is_still_ready:
 			return session_state_response{
 				.status = session_state_status::completed,
 				.state_result = finalize_state_result{

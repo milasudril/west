@@ -102,7 +102,7 @@ namespace west::io
 
 			return read_result{
 				.bytes_read = static_cast<size_t>(res),
-				.ec = operation_result::object_is_still_ready
+				.ec = operation_result::completed
 			};
 		}
 
@@ -121,7 +121,7 @@ namespace west::io
 
 			return write_result{
 				.bytes_written = static_cast<size_t>(res),
-				.ec = operation_result::object_is_still_ready
+				.ec = operation_result::completed
 			};
 		}
 

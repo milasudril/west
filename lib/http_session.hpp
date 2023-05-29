@@ -64,11 +64,6 @@ namespace west::http
 					}
 				};
 
-			// GCOVR_EXCL_START
-			case io::operation_result::object_is_still_ready:
-				return abort<session_state_response>();
-			// GCOVR_EXCL_STOP
-
 			case io::operation_result::operation_would_block:
 				return session_state_response{
 					.status = session_state_status::more_data_needed,
@@ -105,11 +100,6 @@ namespace west::http
 						.error_message = nullptr
 					}
 				};
-
-			// GCOVR_EXCL_START
-			case io::operation_result::object_is_still_ready:
-				abort();
-			// GCOVR_EXCL_STOP
 
 			case io::operation_result::operation_would_block:
 				return session_state_response{

@@ -15,7 +15,7 @@ namespace
 
 			return west::io::write_result{
 				bytes_to_write,
-				west::io::operation_result::object_is_still_ready
+				west::io::operation_result::completed
 			};
 		}
 

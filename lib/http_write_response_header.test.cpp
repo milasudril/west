@@ -10,13 +10,14 @@ namespace
 	struct data_sink
 	{
 		std::reference_wrapper<std::string> m_output_buffer;
-		west::io::operation_result res{west::io::operation_result::object_is_still_ready};
+		west::io::operation_result res{west::io::operation_result::completed};
+		size_t max_length{4096};
 
 		auto write(std::span<char const> buffer)
 		{
-
-			auto const bytes_to_write = std::min(std::size(buffer), static_cast<size_t>(13));
+			auto const bytes_to_write = std::min(std::min(std::size(buffer), max_length), static_cast<size_t>(13));
 			std::copy_n(std::begin(buffer), bytes_to_write, std::back_inserter(m_output_buffer.get()));
+			max_length -= bytes_to_write;
 			return west::io::write_result{
 				bytes_to_write,
 				res
@@ -90,7 +91,7 @@ TESTCASE(west_http_write_response_header_connection_closed)
 
 	west::http::write_response_header writer{header};
 	std::string output_buffer;
-	west::http::session session{data_sink{output_buffer, west::io::operation_result::completed},
+	west::http::session session{data_sink{output_buffer, west::io::operation_result::completed, 17},
 		request_handler{},
 		west::http::request_info{},
 		west::http::response_header{}

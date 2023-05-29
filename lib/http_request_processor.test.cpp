@@ -38,8 +38,7 @@ namespace
 					m_request_offset += bytes_to_read;
 					return west::io::read_result{
 						.bytes_read = bytes_to_read,
-						.ec = bytes_to_read != 0 ? west::io::operation_result::object_is_still_ready
-							: west::io::operation_result::completed
+						.ec = west::io::operation_result::completed
 					};
 				}
 				else
@@ -71,7 +70,7 @@ namespace
 					std::copy_n(std::begin(buffer), bytes_to_write, std::back_inserter(m_output));
 					return west::io::write_result{
 						.bytes_written = bytes_to_write,
-						.ec = west::io::operation_result::object_is_still_ready
+						.ec = west::io::operation_result::completed
 					};
 				}
 				else

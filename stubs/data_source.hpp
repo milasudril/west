@@ -31,9 +31,7 @@ namespace west::stubs
 					m_ptr += bytes_to_read;
 					return west::io::read_result{
 						.bytes_read = bytes_to_read,
-						.ec = bytes_to_read == 0 ?
-							west::io::operation_result::completed:
-							west::io::operation_result::object_is_still_ready
+						.ec = west::io::operation_result::completed
 					};
 				}
 
