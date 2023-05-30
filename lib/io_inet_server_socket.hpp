@@ -87,6 +87,9 @@ namespace west::io
 		[[nodiscard]] auto remote_address() const
 		{ return m_remote_address; }
 
+		void set_non_blocking()
+		{ io::set_non_blocking(m_fd.get()); }
+
 		[[nodiscard]] read_result read(std::span<char> buffer)
 		{
 			auto res = ::read(m_fd.get(), std::data(buffer), std::size(buffer));
@@ -147,6 +150,9 @@ namespace west::io
 			if(::listen(m_fd.get(), listen_backlock) == -1)
 			{ throw system_error{"Failed to listen on socket", errno}; }
 		}
+
+		void set_non_blocking()
+		{ io::set_non_blocking(m_fd.get()); }
 
 		inet_connection accept() const
 		{
