@@ -8,10 +8,8 @@ namespace
 {
 	struct callback
 	{
-		 west::io::fd_event_result operator()() const
-		 {
-			 return west::io::fd_event_result::keep_listener;
-		 }
+		 void operator()() const
+		 {}
 	};
 }
 
