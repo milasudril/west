@@ -1,6 +1,8 @@
 #ifndef WEST_IO_FD_HPP
 #define WEST_IO_FD_HPP
 
+#include "./system_error.hpp"
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -48,6 +50,24 @@ namespace west::io
 	template<class ... Args>
 	[[nodiscard]] auto create_socket(Args&& ... args)
 	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
+
+	struct pipe
+	{
+		fd_owner read_end;
+		fd_owner write_end;
+	};
+
+	[[nodiscard]] inline auto create_pipe(int flags)
+	{
+		std::array<int, 2> fds{};
+		if( pipe2(std::data(fds), flags) == -1)
+		{ throw system_error{"Failed to create a pipe", errno}; }
+
+		return pipe{
+			.read_end = fd_owner{fd{fds[0]}},
+			.write_end = fd_owner{fd{fds[1]}}
+		};
+	}
 
 	inline void set_non_blocking(struct fd fd)
 	{ ::fcntl(fd, F_SETFD, O_NONBLOCK); }

@@ -16,4 +16,6 @@ namespace
 TESTCASE(west_io_fd_event_monitor_create)
 {
 	west::io::fd_event_monitor<callback> monitor{};
+	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
+
 }
