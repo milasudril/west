@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <span>
+#include <cassert>
 
 namespace west::io
 {
@@ -30,6 +31,9 @@ namespace west::io
 
 		void wait_for_events()
 		{
+			if(std::size(m_listeners) == 0)
+			{ return; }
+
 			std::span event_buffer{m_events.get(), std::size(m_listeners)};
 
 			auto const n = ::epoll_wait(m_fd.get(),
@@ -67,11 +71,11 @@ namespace west::io
 			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_ADD, fd, &event) == -1)
 			{
 				auto const saved_errno = errno;
-				m_listeners.erase(i);
+				m_listeners.erase(i.second);
 				throw system_error{"Failed to add event listener for file descriptor", saved_errno};
 			}
 
-			m_events = std::make_unique_for_overwrite<epoll_event[]>(m_listeners);
+			m_events = std::make_unique_for_overwrite<epoll_event[]>(std::size(m_listeners));
 			return *this;
 		}
 

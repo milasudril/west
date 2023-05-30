@@ -4,18 +4,94 @@
 
 #include <testfwk/testfwk.hpp>
 
+#include <thread>
+#include <chrono>
+
 namespace
 {
 	struct callback
 	{
-		 void operator()() const
-		 {}
+		std::atomic<int> callcount;
+
+		void operator()()
+		{ ++callcount; }
 	};
+
+	template<class Duration, class Callable, class ... Args>
+	[[nodiscard]] auto expectBlockForAtLeast(Duration d, Callable&& f, Args&&... args)
+	{
+		return std::jthread{[d, func = std::forward<Callable>(f)]<class ... T>(auto&&, T&&... args) {
+			auto const t0 = std::chrono::steady_clock::now();
+			func(std::forward<T>(args)...);
+			auto const t1 = std::chrono::steady_clock::now();
+			EXPECT_GE(t1 - t0, d);
+		}, std::forward<Args>(args)...};
+	}
 }
 
-TESTCASE(west_io_fd_event_monitor_create)
+TESTCASE(west_io_fd_event_monitor_monitor_pipe)
 {
-	west::io::fd_event_monitor<callback> monitor{};
+	west::io::fd_event_monitor<std::reference_wrapper<callback>> monitor{};
 	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
 
+	callback read_activated{};
+
+	// No listener. wait_for_events would return immediately
+	monitor.wait_for_events();
+	EXPECT_EQ(read_activated.callcount, 0);
+
+	monitor.add(pipe.read_end.get(), std::ref(read_activated));
+
+	// Wait for, and write some data
+	{
+		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
+			monitor.wait_for_events();
+		});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds{250});
+
+		{
+			std::string_view buffer{"Hello, World"};
+			auto res = ::write(pipe.write_end.get(), std::data(buffer), std::size(buffer));
+			EXPECT_EQ(res, std::ssize(buffer));
+		}
+	}
+	EXPECT_EQ(read_activated.callcount.load(), 1);
+
+	// Listener is still active since there is more data to read
+	monitor.wait_for_events();
+	EXPECT_EQ(read_activated.callcount, 2);
+
+	// Draining the pipe should cause wait_for_data to block
+	while(true)
+	{
+		std::array<char, 12> buffer;
+		auto res = ::read(pipe.read_end.get(), std::data(buffer), std::size(buffer));
+		if(res == -1)
+		{
+			EXPECT_EQ(errno == EWOULDBLOCK || errno == EAGAIN, true);
+			break;
+		}
+		else
+		if(res == 0)
+		{ break; }
+		else
+		{ EXPECT_EQ(res, std::ssize(buffer)); }
+	}
+
+	// Wait for, and write some data again
+	{
+		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
+			monitor.wait_for_events();
+		});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds{250});
+
+		{
+			std::string_view buffer{"Hello, World"};
+			auto res = ::write(pipe.write_end.get(), std::data(buffer), std::size(buffer));
+			EXPECT_EQ(res, std::ssize(buffer));
+		}
+	}
+	EXPECT_EQ(read_activated.callcount.load(), 3);
 }
