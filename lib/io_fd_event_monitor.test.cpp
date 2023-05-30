@@ -4,7 +4,18 @@
 
 #include <testfwk/testfwk.hpp>
 
+namespace
+{
+	struct callback
+	{
+		 west::io::fd_event_result operator()() const
+		 {
+			 return west::io::fd_event_result::keep_listener;
+		 }
+	};
+}
+
 TESTCASE(west_io_fd_event_monitor_create)
 {
-	west::io::fd_event_monitor monitor{};
+	west::io::fd_event_monitor<callback> monitor{};
 }

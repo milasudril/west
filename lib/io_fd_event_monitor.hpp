@@ -32,19 +32,24 @@ namespace west::io
 
 		void wait_for_events()
 		{
-			auto const n = ::epoll_wait(m_fd.get(), std::data(m_events), static_cast<int>(std::size(m_events)), -1);
+			std::span event_buffer{m_events.get(), std::size(m_listeners)};
+
+			auto const n = ::epoll_wait(m_fd.get(),
+				std::data(event_buffer),
+				static_cast<int>(std::size(event_buffer)),
+				-1);
 
 			if(n == -1)
 			{ throw system_error{"epoll_wait failed", errno}; }
 
-			for(auto& event : std::span{std::begin(m_events), static_cast<size_t>(n)})
+			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<event_data*>(event.data.ptr);
 				if(data->listener() == fd_event_result::remove_listener)
 				{
 					epoll_event event{};
 					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, data->fd, &event);
-					m_events.erase(data->fd);
+					m_listeners.erase(data->fd);
 				}
 			}
 		}
@@ -66,7 +71,7 @@ namespace west::io
 				throw system_error{"Failed to add event listener for file descriptor", saved_errno};
 			}
 
-			m_events.resize(std::size(m_listeners));
+			m_events = std::make_unique_for_overwrite<epoll_event[]>(m_listeners);
 			return *this;
 		}
 
@@ -77,7 +82,7 @@ namespace west::io
 			FdEventListener listener;
 			struct fd const fd;
 		};
-		std::vector<epoll_event> m_events;
+		std::unique_ptr<epoll_event[]> m_events;
 		std::unordered_map<fd, event_data> m_listeners;
 	};
 }

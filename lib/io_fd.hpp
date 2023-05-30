@@ -8,6 +8,7 @@
 #include <fcntl.h>
 
 #include <memory>
+#include <functional>
 
 namespace west::io
 {
@@ -47,6 +48,16 @@ namespace west::io
 	template<class ... Args>
 	[[nodiscard]] auto create_socket(Args&& ... args)
 	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
+
+	inline void set_non_blocking(struct fd fd)
+	{ ::fcntl(fd, F_SETFD, O_NONBLOCK); }
 }
+
+template<>
+struct std::hash<west::io::fd>
+{
+	auto operator()(west::io::fd fd) const
+	{ return std::hash<int>{}(fd); }
+};
 
 #endif
