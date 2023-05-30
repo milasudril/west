@@ -142,14 +142,10 @@ namespace west::io
 			int listen_backlock):
 			m_fd{create_socket(AF_INET, SOCK_STREAM, 0)}
 		{
-			if(m_fd == nullptr)
-			{ throw system_error{"Failed to create socket", errno}; }
-
 			m_port = bind(m_fd.get(), client_address, ports_to_try);
 
 			if(::listen(m_fd.get(), listen_backlock) == -1)
 			{ throw system_error{"Failed to listen on socket", errno}; }
-
 		}
 
 		inet_connection accept() const

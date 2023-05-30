@@ -45,11 +45,23 @@ namespace west::io
 
 	template<class ... Args>
 	[[nodiscard]] auto open(Args&& ... args)
-	{ return fd_owner{::open(std::forward<Args>(args)...)}; }
+	{
+		auto tmp = ::open(std::forward<Args>(args)...);
+		if(tmp == -1)
+		{ throw system_error{"Failed to open file", errno}; }
+
+		return fd_owner{fd{tmp}};
+	}
 
 	template<class ... Args>
 	[[nodiscard]] auto create_socket(Args&& ... args)
-	{ return fd_owner{::socket(std::forward<Args>(args)...)}; }
+	{
+		auto tmp = ::socket(std::forward<Args>(args)...);
+		if(tmp == -1)
+		{ throw system_error{"Failed to create socket", errno}; }
+
+		return fd_owner{fd{tmp}};
+	}
 
 	struct pipe
 	{
