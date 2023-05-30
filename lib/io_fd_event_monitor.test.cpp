@@ -29,7 +29,7 @@ namespace
 	}
 }
 
-TESTCASE(west_io_fd_event_monitor_monitor_pipe)
+TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 {
 	west::io::fd_event_monitor<std::reference_wrapper<callback>> monitor{};
 	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
@@ -41,6 +41,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe)
 	EXPECT_EQ(read_activated.callcount, 0);
 
 	monitor.add(pipe.read_end.get(), std::ref(read_activated));
+
 
 	// Wait for, and write some data
 	{
@@ -56,7 +57,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe)
 			EXPECT_EQ(res, std::ssize(buffer));
 		}
 	}
-	EXPECT_EQ(read_activated.callcount.load(), 1);
+	EXPECT_EQ(read_activated.callcount, 1);
 
 	// Listener is still active since there is more data to read
 	monitor.wait_for_events();
@@ -65,8 +66,8 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe)
 	// Draining the pipe should cause wait_for_data to block
 	while(true)
 	{
-		std::array<char, 12> buffer;
-		auto res = ::read(pipe.read_end.get(), std::data(buffer), std::size(buffer));
+		std::array<char, 12> buffer{};
+		auto const res = ::read(pipe.read_end.get(), std::data(buffer), std::size(buffer));
 		if(res == -1)
 		{
 			EXPECT_EQ(errno == EWOULDBLOCK || errno == EAGAIN, true);
@@ -93,5 +94,57 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe)
 			EXPECT_EQ(res, std::ssize(buffer));
 		}
 	}
-	EXPECT_EQ(read_activated.callcount.load(), 3);
+	EXPECT_EQ(read_activated.callcount, 3);
 }
+
+TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
+{
+	west::io::fd_event_monitor<std::reference_wrapper<callback>> monitor{};
+	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
+
+	callback write_activated{};
+
+	// No listener. wait_for_events would return immediately
+	monitor.wait_for_events();
+	EXPECT_EQ(write_activated.callcount, 0);
+
+	monitor.add(pipe.write_end.get(), std::ref(write_activated));
+
+	// Write should be possible now
+	monitor.wait_for_events();
+	EXPECT_EQ(write_activated.callcount, 1);
+
+	// Fill the pipe
+	while(true)
+	{
+		std::array<char, 65536> buffer{};
+		auto res = ::write(pipe.write_end.get(), std::data(buffer), std::size(buffer));
+		if(res == -1)
+		{
+			EXPECT_EQ(errno == EWOULDBLOCK || errno == EAGAIN, true);
+			break;
+		}
+	}
+
+	// Read from the pipe to see that the write end becomes available again
+	{
+		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
+			monitor.wait_for_events();
+		});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds{250});
+
+		{
+			std::array<char, 134> buffer{};
+			auto res = ::read(pipe.read_end.get(), std::data(buffer), std::size(buffer));
+			EXPECT_EQ(res, std::ssize(buffer));
+		}
+	}
+
+	EXPECT_EQ(write_activated.callcount, 2);
+}
+
+#if 0
+
+
+#endif
