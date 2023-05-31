@@ -45,7 +45,10 @@ namespace west::io
 			{ throw system_error{"epoll_wait failed", errno}; }
 
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
-			{ (*static_cast<FdEventListener*>(event.data.ptr))(); }
+			{
+				auto const data = static_cast<event_data*>(event.data.ptr);
+				data->listener();
+			}
 		}
 
 		fd_event_monitor& remove(struct fd fd)
@@ -59,7 +62,7 @@ namespace west::io
 		{
 			assert(!m_listeners.contains(fd));
 
-			auto const i = m_listeners.insert(std::pair{fd, std::move(l)});
+			auto const i = m_listeners.insert(std::pair{fd, event_data{std::move(l), fd}});
 			epoll_event event{
 				.events = EPOLLIN | EPOLLOUT,
 				.data = &i.first->second
@@ -78,9 +81,13 @@ namespace west::io
 
 	private:
 		fd_owner m_fd;
-
+		struct event_data
+		{
+			FdEventListener listener;
+			struct fd const fd;
+		};
 		std::unique_ptr<epoll_event[]> m_events;
-		std::unordered_map<fd, FdEventListener> m_listeners;
+		std::unordered_map<fd, event_data> m_listeners;
 	};
 }
 
