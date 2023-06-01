@@ -37,7 +37,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 	callback read_activated{};
 
 	// No listener. wait_for_events would return immediately
-	monitor.wait_for_events();
+	EXPECT_EQ(monitor.wait_for_events(), false);
 	EXPECT_EQ(read_activated.callcount, 0);
 
 	monitor.add(pipe.read_end.get(), std::ref(read_activated));
@@ -46,7 +46,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 	// Wait for, and write some data
 	{
 		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
-			monitor.wait_for_events();
+			EXPECT_EQ(monitor.wait_for_events(), true);
 		});
 
 		std::this_thread::sleep_for(std::chrono::milliseconds{250});
@@ -60,7 +60,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 	EXPECT_EQ(read_activated.callcount, 1);
 
 	// Listener is still active since there is more data to read
-	monitor.wait_for_events();
+	EXPECT_EQ(monitor.wait_for_events(), true);
 	EXPECT_EQ(read_activated.callcount, 2);
 
 	// Draining the pipe should cause wait_for_data to block
@@ -83,7 +83,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 	// Wait for, and write some data again
 	{
 		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
-			monitor.wait_for_events();
+			EXPECT_EQ(monitor.wait_for_events(), true);
 		});
 
 		std::this_thread::sleep_for(std::chrono::milliseconds{250});
@@ -105,13 +105,13 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
 	callback write_activated{};
 
 	// No listener. wait_for_events would return immediately
-	monitor.wait_for_events();
+	EXPECT_EQ(monitor.wait_for_events(), false);
 	EXPECT_EQ(write_activated.callcount, 0);
 
 	monitor.add(pipe.write_end.get(), std::ref(write_activated));
 
 	// Write should be possible now
-	monitor.wait_for_events();
+	EXPECT_EQ(monitor.wait_for_events(), true);
 	EXPECT_EQ(write_activated.callcount, 1);
 
 	// Fill the pipe
@@ -129,7 +129,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
 	// Read from the pipe to see that the write end becomes available again
 	{
 		auto _ = expectBlockForAtLeast(std::chrono::milliseconds{125}, [&monitor]() {
-			monitor.wait_for_events();
+			EXPECT_EQ(monitor.wait_for_events(), true);
 		});
 
 		std::this_thread::sleep_for(std::chrono::milliseconds{250});
@@ -143,8 +143,3 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
 
 	EXPECT_EQ(write_activated.callcount, 2);
 }
-
-#if 0
-
-
-#endif

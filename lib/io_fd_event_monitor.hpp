@@ -29,10 +29,10 @@ namespace west::io
 			{ throw system_error{"Failed to create epoll instance", errno}; }
 		}
 
-		void wait_for_events()
+		[[nodiscard]] bool wait_for_events()
 		{
 			if(std::size(m_listeners) == 0)
-			{ return; }
+			{ return false; }
 
 			std::span event_buffer{m_events.get(), std::size(m_listeners)};
 
@@ -49,6 +49,8 @@ namespace west::io
 				auto const data = static_cast<std::pair<fd_ref const, FdEventListener>*>(event.data.ptr);
 				data->second();
 			}
+
+			return true;
 		}
 
 		fd_event_monitor& remove(fd_ref fd)
