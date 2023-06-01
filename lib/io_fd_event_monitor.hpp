@@ -55,9 +55,8 @@ namespace west::io
 					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, data->first, &event);
 					m_listeners.erase(data->first);
 				}
-
-			return true;
 			}
+			return true;
 		}
 
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l)

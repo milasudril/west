@@ -53,33 +53,24 @@ namespace west::engine
 	void main_loop(ServerSocket&& server_socket, SessionFactory&& session_factory)
 	{
 		server_socket.set_non_blocking();
-		io::fd_event_monitor<std::function<void()>> monitor{};
+		io::fd_event_monitor<std::function<io::fd_event_result()>> monitor{};
 		auto const server_socket_fd = server_socket.fd();
-		std::vector<io::fd_ref> connections_to_remove;
 		monitor.add(server_socket_fd,
 			[server_socket = std::forward<ServerSocket>(server_socket),
 				&monitor,
-				&connections_to_remove,
 				session_factory = std::forward<SessionFactory>(session_factory)
 			](){
 				auto connection = server_socket.accept();
 				auto const conn_fd = connection.fd();
-				monitor.add(conn_fd, [session = session_factory.create(std::move(connection)),
-					conn_fd,
-					&connections_to_remove](){
+				monitor.add(conn_fd, [session = session_factory.create(std::move(connection))](){
 					if(is_session_terminated(session.socket_is_ready()))
-					{ connections_to_remove.push_back(conn_fd); }
+					{ return io::fd_event_result::remove_listener; }
+					else
+					{ return io::fd_event_result::keep_listener; }
 				});
 		});
 
-		while(true)
-		{
-			monitor.wait_for_events();
-			std::ranges::for_each(connections_to_remove, [&monitor](auto item){
-				monitor.remove(item);
-			});
-			connections_to_remove.clear();
-		}
+		while(monitor.wait_for_events());
 	}
 }
 

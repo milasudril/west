@@ -13,7 +13,7 @@ namespace
 	{
 		std::atomic<int> callcount;
 
-		 west::io::fd_event_result operator()() const
+		 west::io::fd_event_result operator()()
 		{
 			++callcount;
 			 return west::io::fd_event_result::keep_listener;
