@@ -46,8 +46,8 @@ namespace west::io
 
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
-				auto const data = static_cast<event_data*>(event.data.ptr);
-				data->listener();
+				auto const data = static_cast<std::pair<fd_ref const, FdEventListener>*>(event.data.ptr);
+				data->second();
 			}
 		}
 
@@ -62,10 +62,10 @@ namespace west::io
 		{
 			assert(!m_listeners.contains(fd));
 
-			auto const i = m_listeners.insert(std::pair{fd, event_data{std::move(l), fd}});
+			auto const i = m_listeners.insert(std::pair{fd, std::move(l)});
 			epoll_event event{
 				.events = EPOLLIN | EPOLLOUT,
-				.data = &i.first->second
+				.data = &(*i.first)
 			};
 
 			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_ADD, fd, &event) == -1)
@@ -81,13 +81,9 @@ namespace west::io
 
 	private:
 		fd_owner m_fd;
-		struct event_data
-		{
-			FdEventListener listener;
-			fd_ref const fd;
-		};
+
 		std::unique_ptr<epoll_event[]> m_events;
-		std::unordered_map<fd_ref, event_data> m_listeners;
+		std::unordered_map<fd_ref, FdEventListener> m_listeners;
 	};
 }
 
