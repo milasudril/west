@@ -13,10 +13,12 @@
 
 namespace west::io
 {
+	enum class fd_event_result{remove_listener, keep_listener};
+
 	template<class T>
 	concept fd_event_listener = requires(T x)
 	{
-		{x()} -> std::same_as<void>;
+		{x()} -> std::same_as<fd_event_result>;
 	};
 
 	template<fd_event_listener FdEventListener>
@@ -47,17 +49,15 @@ namespace west::io
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<std::pair<fd_ref const, FdEventListener>*>(event.data.ptr);
-				data->second();
-			}
+				if(data->second() == fd_event_result::remove_listener)
+				{
+					epoll_event event{};
+					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, data->first, &event);
+					m_listeners.erase(data->first);
+				}
 
 			return true;
-		}
-
-		fd_event_monitor& remove(fd_ref fd)
-		{
-			::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd, nullptr);
-			m_listeners.erase(fd);
-			return *this;
+			}
 		}
 
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l)

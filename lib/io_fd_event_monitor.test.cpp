@@ -13,8 +13,11 @@ namespace
 	{
 		std::atomic<int> callcount;
 
-		void operator()()
-		{ ++callcount; }
+		 west::io::fd_event_result operator()() const
+		{
+			++callcount;
+			 return west::io::fd_event_result::keep_listener;
+		}
 	};
 
 	template<class Duration, class Callable, class ... Args>
