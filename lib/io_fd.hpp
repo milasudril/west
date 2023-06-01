@@ -14,16 +14,16 @@
 
 namespace west::io
 {
-	struct fd
+	struct fd_ref
 	{
-		fd():value{-1}{}
-		fd(int val) : value{val} {}
-		fd(std::nullptr_t) : value{-1} {}
+		fd_ref():value{-1}{}
+		fd_ref(int val) : value{val} {}
+		fd_ref(std::nullptr_t) : value{-1} {}
 
 		operator int() const {return value;}
 
-		bool operator ==(const fd& other) const = default;
-		bool operator !=(const fd& other) const = default;
+		bool operator ==(const fd_ref& other) const = default;
+		bool operator !=(const fd_ref& other) const = default;
 
 		bool operator ==(std::nullptr_t) const {return value == -1;}
 		bool operator !=(std::nullptr_t) const {return value != -1;}
@@ -35,13 +35,13 @@ namespace west::io
 
 	struct fd_deleter
 	{
-		using pointer = fd;
+		using pointer = fd_ref;
 
-		void operator()(fd desc) const
+		void operator()(fd_ref desc) const
 		{ ::close(desc); }
 	};
 
-	using fd_owner = std::unique_ptr<fd, fd_deleter>;
+	using fd_owner = std::unique_ptr<fd_ref, fd_deleter>;
 
 	template<class ... Args>
 	[[nodiscard]] auto open(Args&& ... args)
@@ -50,7 +50,7 @@ namespace west::io
 		if(tmp == -1)
 		{ throw system_error{"Failed to open file", errno}; }
 
-		return fd_owner{fd{tmp}};
+		return fd_owner{fd_ref{tmp}};
 	}
 
 	template<class ... Args>
@@ -60,7 +60,7 @@ namespace west::io
 		if(tmp == -1)
 		{ throw system_error{"Failed to create socket", errno}; }
 
-		return fd_owner{fd{tmp}};
+		return fd_owner{fd_ref{tmp}};
 	}
 
 	struct pipe
@@ -76,19 +76,19 @@ namespace west::io
 		{ throw system_error{"Failed to create a pipe", errno}; }
 
 		return pipe{
-			.read_end = fd_owner{fd{fds[0]}},
-			.write_end = fd_owner{fd{fds[1]}}
+			.read_end = fd_owner{fd_ref{fds[0]}},
+			.write_end = fd_owner{fd_ref{fds[1]}}
 		};
 	}
 
-	inline void set_non_blocking(struct fd fd)
+	inline void set_non_blocking(fd_ref fd)
 	{ ::fcntl(fd, F_SETFD, O_NONBLOCK); }
 }
 
 template<>
-struct std::hash<west::io::fd>
+struct std::hash<west::io::fd_ref>
 {
-	auto operator()(west::io::fd fd) const
+	auto operator()(west::io::fd_ref fd) const
 	{ return std::hash<int>{}(fd); }
 };
 

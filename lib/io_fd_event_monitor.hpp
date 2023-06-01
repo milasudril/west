@@ -51,14 +51,14 @@ namespace west::io
 			}
 		}
 
-		fd_event_monitor& remove(struct fd fd)
+		fd_event_monitor& remove(fd_ref fd)
 		{
 			::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd, nullptr);
 			m_listeners.erase(fd);
 			return *this;
 		}
 
-		fd_event_monitor& add(struct fd fd, FdEventListener&& l)
+		fd_event_monitor& add(fd_ref fd, FdEventListener&& l)
 		{
 			assert(!m_listeners.contains(fd));
 
@@ -84,10 +84,10 @@ namespace west::io
 		struct event_data
 		{
 			FdEventListener listener;
-			struct fd const fd;
+			fd_ref const fd;
 		};
 		std::unique_ptr<epoll_event[]> m_events;
-		std::unordered_map<fd, event_data> m_listeners;
+		std::unordered_map<fd_ref, event_data> m_listeners;
 	};
 }
 

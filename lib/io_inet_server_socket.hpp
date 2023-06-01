@@ -46,7 +46,7 @@ namespace west::io
 		return std::string{std::data(buffer)};
 	}
 
-	[[nodiscard]] inline auto try_bind(fd socket, inet_address client_address, uint16_t port)
+	[[nodiscard]] inline auto try_bind(fd_ref socket, inet_address client_address, uint16_t port)
 	{
 		sockaddr_in sock_addr{};
 		sock_addr.sin_family = AF_INET;
@@ -56,7 +56,7 @@ namespace west::io
 	}
 
 	template<class BindFunc = decltype(try_bind)>
-	inline auto bind(fd socket,
+	inline auto bind(fd_ref socket,
 		inet_address client_address,
 		std::ranges::iota_view<int, int> ports_to_try,
 		BindFunc&& bind_func = try_bind)

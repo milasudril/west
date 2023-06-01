@@ -11,14 +11,14 @@ namespace west::engine
 	template<class T>
 	concept connection = requires(T x)
 	{
-		{ x.fd() } -> std::same_as<io::fd>;
+		{ x.fd() } -> std::same_as<io::fd_ref>;
 	};
 
 	template<class T>
 	concept server_socket = requires(T x)
 	{
 		{ x.accept() } -> connection;
-		{ x.fd() } -> std::same_as<io::fd>;
+		{ x.fd() } -> std::same_as<io::fd_ref>;
 	};
 
 	template<class T>
@@ -55,7 +55,7 @@ namespace west::engine
 		server_socket.set_non_blocking();
 		io::fd_event_monitor<std::function<void()>> monitor{};
 		auto const server_socket_fd = server_socket.fd();
-		std::vector<io::fd> connections_to_remove;
+		std::vector<io::fd_ref> connections_to_remove;
 		monitor.add(server_socket_fd,
 			[server_socket = std::forward<ServerSocket>(server_socket),
 				&monitor,
