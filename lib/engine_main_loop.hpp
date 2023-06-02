@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace west::engine
+namespace west
 {
 	template<class T>
 	concept connection = requires(T x)
@@ -67,26 +67,35 @@ namespace west::engine
 		);
 	}
 	
-	template<server_socket ServerSocket,
-		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
-	void enroll(io::fd_event_monitor& event_monitor,
-		ServerSocket&& server_socket,
-		SessionFactory&& session_factory)
+	class server_registry
 	{
-		server_socket.set_non_blocking();
-		auto const server_socket_fd = server_socket.fd();
-		event_monitor.add(server_socket_fd,
-			[server_socket = std::forward<ServerSocket>(server_socket),
-				session_factory = std::forward<SessionFactory>(session_factory)
-			](auto event_monitor, io::fd_ref){
-				accept_connection(event_monitor, server_socket, session_factory);
-			});
-	}
+	public:
+		template<server_socket ServerSocket,
+			session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
+		server_registry& enroll(io::fd_event_monitor& event_monitor,
+			ServerSocket&& server_socket,
+			SessionFactory&& session_factory)
+		{
+			server_socket.set_non_blocking();
+			auto const server_socket_fd = server_socket.fd();
+			m_event_monitor.add(server_socket_fd,
+				[server_socket = std::forward<ServerSocket>(server_socket),
+					session_factory = std::forward<SessionFactory>(session_factory)
+				](auto event_monitor, io::fd_ref){
+					accept_connection(event_monitor, server_socket, session_factory);
+				});
+			return *this;
+		}
+		
+		server_registry& run_main_loop()
+		{
+			while(m_event_monitor.wait_for_and_dispatch_events());
+			return *this;
+		}
 	
-	void run_main_loop(io::fd_event_monitor& event_monitor)
-	{
-		while(event_monitor.wait_for_and_dispatch_events());
-	}
+	private:
+		io::fd_event_monitor m_event_monitor;
+	};
 }
 
 #endif
