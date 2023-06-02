@@ -130,6 +130,9 @@ namespace west::io
 
 		void stop_reading()
 		{ ::shutdown(m_fd.get(), SHUT_RD); }
+		
+		[[nodiscard]] fd_ref fd() const
+		{ return m_fd.get(); }
 
 	private:
 		fd_owner m_fd;
@@ -169,8 +172,11 @@ namespace west::io
 			};
 		}
 
-		uint16_t port() const
+		[[nodiscard]] uint16_t port() const
 		{ return m_port; }
+		
+		[[nodiscard]] fd_ref fd() const
+		{ return m_fd.get(); }
 
 	private:
 		fd_owner m_fd;
