@@ -1,10 +1,8 @@
-#ifndef WEST_ENGINE_MAINLOOP_HPP
-#define WEST_ENGINE_MAINLOOP_HPP
+#ifndef WEST_SERVER_REGISTRY_HPP
+#define WEST_SERVER_REGISTRY_HPP
 
 #include "./io_fd.hpp"
 #include "./io_fd_event_monitor.hpp"
-
-#include <algorithm>
 
 namespace west
 {
@@ -67,12 +65,12 @@ namespace west
 		);
 	}
 	
-	class server_registry
+	class service_registry
 	{
 	public:
 		template<server_socket ServerSocket,
 			session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
-		server_registry& enroll(io::fd_event_monitor& event_monitor,
+		service_registry& enroll(io::fd_event_monitor& event_monitor,
 			ServerSocket&& server_socket,
 			SessionFactory&& session_factory)
 		{
@@ -87,7 +85,7 @@ namespace west
 			return *this;
 		}
 		
-		server_registry& run_main_loop()
+		service_registry& run_main_loop()
 		{
 			while(m_event_monitor.wait_for_and_dispatch_events());
 			return *this;
