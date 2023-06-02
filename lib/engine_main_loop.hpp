@@ -47,6 +47,24 @@ namespace west::engine
 			using type = std::remove_cvref_t<decltype(std::declval<Socket>().accept())>;
 		};
 	}
+	
+	template<server_socket ServerSocket,
+		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
+	void accept_connection(ServerSocket& server_socket, 
+		SessionFactory& session_factory,
+		io::fd_event_monitor& event_monitor)
+	{
+		auto connection = server_socket.accept();
+		auto const conn_fd = connection.fd();
+		event_monitor.add(conn_fd,
+			[session = session_factory.create(std::move(connection))]
+			(io::fd_ref fd, auto& monitor){
+				if(is_session_terminated(session.socket_is_ready()))
+				{ monitor.remove(fd); }
+			}
+		);
+	}
+	
 
 	template<server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
@@ -59,13 +77,7 @@ namespace west::engine
 			[server_socket = std::forward<ServerSocket>(server_socket),
 				session_factory = std::forward<SessionFactory>(session_factory)
 			](io::fd_ref, auto& monitor){
-				auto connection = server_socket.accept();
-				auto const conn_fd = connection.fd();
-				monitor.add(conn_fd, [session = session_factory.create(std::move(connection))]
-				(io::fd_ref fd, auto& monitor){
-					if(is_session_terminated(session.socket_is_ready()))
-					{ monitor.remove(fd); }
-				});
+				accept_connect(server_socket, session_factory, monitor);
 			});
 		while(monitor.wait_for_and_dispatch_events());
 	}
