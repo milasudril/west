@@ -50,35 +50,36 @@ namespace west::engine
 	
 	template<server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
-	void accept_connection(ServerSocket& server_socket, 
-		SessionFactory& session_factory,
-		io::fd_event_monitor& event_monitor)
+	void accept_connection(
+		io::fd_event_monitor& event_monitor,
+		ServerSocket& server_socket, 
+		SessionFactory& session_factory)
 	{
 		auto connection = server_socket.accept();
 		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
 		event_monitor.add(conn_fd,
 			[session = session_factory.create(std::move(connection))]
-			(io::fd_ref fd, auto& monitor){
+			(auto event_monitor, io::fd_ref fd){
 				if(is_session_terminated(session.socket_is_ready()))
-				{ monitor.remove(fd); }
+				{ event_monitor.remove(fd); }
 			}
 		);
 	}
 	
 	template<server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
-	void enroll(ServerSocket&& server_socket,
-		SessionFactory&& session_factory,
-		io::fd_event_monitor& event_monitor)
+	void enroll(io::fd_event_monitor& event_monitor,
+		ServerSocket&& server_socket,
+		SessionFactory&& session_factory)
 	{
 		server_socket.set_non_blocking();
 		auto const server_socket_fd = server_socket.fd();
 		event_monitor.add(server_socket_fd,
 			[server_socket = std::forward<ServerSocket>(server_socket),
 				session_factory = std::forward<SessionFactory>(session_factory)
-			](io::fd_ref, auto& monitor){
-				accept_connect(server_socket, session_factory, monitor);
+			](auto event_monitor, io::fd_ref){
+				accept_connection(event_monitor, server_socket, session_factory);
 			});
 	}
 	

@@ -38,7 +38,7 @@ namespace west::io
 	class fd_event_monitor
 	{
 	public:		
-		using listener_type = std::function<void(fd_ref, fd_callback_registry_ref<fd_event_monitor>)>;
+		using listener_type = std::function<void(fd_callback_registry_ref<fd_event_monitor>, fd_ref)>;
 		
 		fd_event_monitor():m_fd{epoll_create1(0)}
 		{
@@ -64,7 +64,7 @@ namespace west::io
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<std::pair<fd_ref const, listener_type>*>(event.data.ptr);
-				data->second(data->first, fd_callback_registry_ref{*this});
+				data->second(fd_callback_registry_ref{*this}, data->first);
 			}
 			flush_fds_to_remove();
 			return true;
