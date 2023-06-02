@@ -70,7 +70,7 @@ namespace west::engine
 				});
 		});
 
-		while(monitor.wait_for_events());
+		while(monitor.wait_for_and_dispatch_events());
 	}
 }
 

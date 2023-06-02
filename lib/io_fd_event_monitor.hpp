@@ -15,23 +15,17 @@ namespace west::io
 {
 	enum class fd_event_result{remove_listener, keep_listener};
 
-	template<class T>
-	concept fd_event_listener = requires(T x)
-	{
-		{x()} -> std::same_as<fd_event_result>;
-	};
-
-	template<fd_event_listener FdEventListener>
+	template<class FdEventListener>
 	class fd_event_monitor
 	{
-	public:
+	public:		
 		fd_event_monitor():m_fd{epoll_create1(0)}
 		{
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create epoll instance", errno}; }
 		}
 
-		[[nodiscard]] bool wait_for_events()
+		[[nodiscard]] bool wait_for_and_dispatch_events()
 		{
 			if(std::size(m_listeners) == 0)
 			{ return false; }
