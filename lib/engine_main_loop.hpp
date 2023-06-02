@@ -55,6 +55,7 @@ namespace west::engine
 		io::fd_event_monitor& event_monitor)
 	{
 		auto connection = server_socket.accept();
+		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
 		event_monitor.add(conn_fd,
 			[session = session_factory.create(std::move(connection))]
@@ -65,21 +66,25 @@ namespace west::engine
 		);
 	}
 	
-
 	template<server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
-	void main_loop(ServerSocket&& server_socket, SessionFactory&& session_factory)
+	void enroll(ServerSocket&& server_socket,
+		SessionFactory&& session_factory,
+		io::fd_event_monitor& event_monitor)
 	{
 		server_socket.set_non_blocking();
-		io::fd_event_monitor monitor{};
 		auto const server_socket_fd = server_socket.fd();
-		monitor.add(server_socket_fd,
+		event_monitor.add(server_socket_fd,
 			[server_socket = std::forward<ServerSocket>(server_socket),
 				session_factory = std::forward<SessionFactory>(session_factory)
 			](io::fd_ref, auto& monitor){
 				accept_connect(server_socket, session_factory, monitor);
 			});
-		while(monitor.wait_for_and_dispatch_events());
+	}
+	
+	void run_main_loop(io::fd_event_monitor& event_monitor)
+	{
+		while(event_monitor.wait_for_and_dispatch_events());
 	}
 }
 
