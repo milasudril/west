@@ -13,11 +13,9 @@ namespace
 	{
 		std::atomic<int> callcount;
 
-		 west::io::fd_event_result operator()()
-		{
-			++callcount;
-			 return west::io::fd_event_result::keep_listener;
-		}
+		template<class ... T>
+		void operator()(T&&...)
+		{ ++callcount; }
 	};
 
 	template<class Duration, class Callable, class ... Args>
@@ -34,7 +32,7 @@ namespace
 
 TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 {
-	west::io::fd_event_monitor<std::reference_wrapper<callback>> monitor{};
+	west::io::fd_event_monitor monitor{};
 	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
 
 	callback read_activated{};
@@ -102,7 +100,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_read_end)
 
 TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
 {
-	west::io::fd_event_monitor<std::reference_wrapper<callback>> monitor{};
+	west::io::fd_event_monitor monitor{};
 	auto pipe = west::io::create_pipe(O_NONBLOCK | O_DIRECT);
 
 	callback write_activated{};

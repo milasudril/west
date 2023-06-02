@@ -53,23 +53,20 @@ namespace west::engine
 	void main_loop(ServerSocket&& server_socket, SessionFactory&& session_factory)
 	{
 		server_socket.set_non_blocking();
-		io::fd_event_monitor<std::function<io::fd_event_result()>> monitor{};
+		io::fd_event_monitor monitor{};
 		auto const server_socket_fd = server_socket.fd();
 		monitor.add(server_socket_fd,
 			[server_socket = std::forward<ServerSocket>(server_socket),
-				&monitor,
 				session_factory = std::forward<SessionFactory>(session_factory)
-			](){
+			](io::fd_ref, auto& monitor){
 				auto connection = server_socket.accept();
 				auto const conn_fd = connection.fd();
-				monitor.add(conn_fd, [session = session_factory.create(std::move(connection))](){
+				monitor.add(conn_fd, [session = session_factory.create(std::move(connection))]
+				(io::fd_ref fd, auto& monitor){
 					if(is_session_terminated(session.socket_is_ready()))
-					{ return io::fd_event_result::remove_listener; }
-					else
-					{ return io::fd_event_result::keep_listener; }
+					{ monitor.remove(fd); }
 				});
-		});
-
+			});
 		while(monitor.wait_for_and_dispatch_events());
 	}
 }
