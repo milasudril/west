@@ -108,6 +108,14 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 							.state_result = std::move(res)
 						};
 					}
+
+					case req_header_parser_error_code::bad_request_method:
+					case req_header_parser_error_code::bad_request_target:
+					case req_header_parser_error_code::wrong_protocol:
+					case req_header_parser_error_code::bad_protocol_version:
+					case req_header_parser_error_code::expected_linefeed:
+					case req_header_parser_error_code::bad_field_name:
+					case req_header_parser_error_code::bad_field_value:
 					default:
 						return session_state_response{
 							.status = session_state_status::client_error_detected,

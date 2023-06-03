@@ -81,5 +81,12 @@ namespace west::http
 		using buffer_span = io_adapter::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
 		std::array<buffer_span, 2> m_buff_spans;
 	};
+	
+	constexpr bool is_session_terminated(request_processor_status status)
+	{
+		return status == request_processor_status::io_error 
+			|| status == request_processor_status::application_error
+			|| status == request_processor_status::completed;
+	}
 }
 #endif
