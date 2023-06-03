@@ -55,17 +55,7 @@ TESTCASE(west_io_inet_server_socket_accept_connection)
 
 	std::jthread client{
 		[port = server.port(), address](){
-			auto socket = west::io::create_socket(AF_INET, SOCK_STREAM, 0);
-			sockaddr_in addr{};
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(port);
-			addr.sin_addr = address.value();
-
-			auto const res = connect(socket.get(),
-				reinterpret_cast<sockaddr const*>(&addr),
-				sizeof(addr));
-
-			REQUIRE_NE(res, -1);
+			auto socket = connect_to(address, port);
 
 			std::string_view msg_out{"Ping"};
 			auto const n_written = ::write(socket.get(), std::data(msg_out), std::size(msg_out));

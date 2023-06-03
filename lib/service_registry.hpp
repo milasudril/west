@@ -84,11 +84,14 @@ namespace west
 			return *this;
 		}
 		
-		service_registry& run_main_loop()
+		service_registry& process_events()
 		{
 			while(m_event_monitor.wait_for_and_dispatch_events());
 			return *this;
 		}
+		
+		auto fd_callback_registry()
+		{ return m_event_monitor.fd_callback_registry(); }
 	
 	private:
 		io::fd_event_monitor m_event_monitor;

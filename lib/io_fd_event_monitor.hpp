@@ -50,6 +50,9 @@ namespace west::io
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create epoll instance", errno}; }
 		}
+		
+		auto fd_callback_registry()
+		{ return fd_callback_registry_ref{*this}; }
 
 		[[nodiscard]] bool wait_for_and_dispatch_events()
 		{
@@ -69,7 +72,7 @@ namespace west::io
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<std::pair<fd_ref const, listener>*>(event.data.ptr);
-				data->second.callback(data->second.object.get(), fd_callback_registry_ref{*this}, data->first);
+				data->second.callback(data->second.object.get(), fd_callback_registry(), data->first);
 			}
 			flush_fds_to_remove();
 			return true;

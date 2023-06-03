@@ -82,7 +82,10 @@ namespace west::io
 	}
 
 	inline void set_non_blocking(fd_ref fd)
-	{ ::fcntl(fd, F_SETFD, O_NONBLOCK); }
+	{ 
+		if(::fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
+		{ throw system_error{"Failed to enable nonblocking mode", errno};}
+	}
 }
 
 template<>

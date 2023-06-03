@@ -45,6 +45,26 @@ namespace west::io
 		inet_ntop(AF_INET, &val, std::data(buffer), 16);
 		return std::string{std::data(buffer)};
 	}
+	
+	[[nodiscard]] inline auto connect_to(inet_address address, uint16_t port)
+	{
+		auto socket = create_socket(AF_INET, SOCK_STREAM, 0);
+		
+		sockaddr_in addr{};
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(port);
+		addr.sin_addr = address.value();
+
+		auto const res = ::connect(socket.get(),
+			reinterpret_cast<sockaddr const*>(&addr),
+			sizeof(addr));
+		
+		if(res == -1)
+		{ throw system_error{"Failed to connect to server", errno};}
+		
+		return socket;
+	}
+	
 
 	[[nodiscard]] inline auto try_bind(fd_ref socket, inet_address client_address, uint16_t port)
 	{
