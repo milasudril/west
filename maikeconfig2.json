@@ -38,7 +38,7 @@
                             "-Wswitch-enum",
                             "-Wno-psabi",
                             "-I.",
-                            "-fconcepts-diagnostics-depth=3"
+                            "-fconcepts-diagnostics-depth=8"
                         ],
                         "iquote": [
                             "."

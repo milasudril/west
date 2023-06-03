@@ -3,6 +3,7 @@
 
 #include "./system_error.hpp"
 #include "./io_fd.hpp"
+#include "./utils.hpp"
 
 #include <sys/epoll.h>
 
@@ -37,8 +38,12 @@ namespace west::io
 
 	class fd_event_monitor
 	{
-	public:		
-		using listener_type = std::function<void(fd_callback_registry_ref<fd_event_monitor>, fd_ref)>;
+	public:
+		struct listener
+		{
+			type_erased_ptr object;
+			void (*callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
+		};
 		
 		fd_event_monitor():m_fd{epoll_create1(0)}
 		{
@@ -63,8 +68,8 @@ namespace west::io
 
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
-				auto const data = static_cast<std::pair<fd_ref const, listener_type>*>(event.data.ptr);
-				data->second(fd_callback_registry_ref{*this}, data->first);
+				auto const data = static_cast<std::pair<fd_ref const, listener>*>(event.data.ptr);
+				data->second.callback(data->second.object.get(), fd_callback_registry_ref{*this}, data->first);
 			}
 			flush_fds_to_remove();
 			return true;
@@ -74,8 +79,17 @@ namespace west::io
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l)
 		{
 			assert(!m_listeners.contains(fd));
+			auto const i = m_listeners.insert(std::pair{
+				fd,
+				listener{
+					make_type_erased_ptr<FdEventListener>(std::forward<FdEventListener>(l)),
+					[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
+						auto& l = *static_cast<FdEventListener*>(obj);
+						l(registry, fd);
+					}
+				}
+			});
 
-			auto const i = m_listeners.insert(std::pair{fd, std::forward<FdEventListener>(l)});
 			epoll_event event{
 				.events = EPOLLIN | EPOLLOUT,
 				.data = &(*i.first)
@@ -92,7 +106,7 @@ namespace west::io
 			return *this;
 		}
 		
-		void defered_remove(fd_ref fd)
+		void deferred_remove(fd_ref fd)
 		{ m_fds_to_remove.push_back(fd); }
 		
 		void flush_fds_to_remove()
@@ -111,7 +125,7 @@ namespace west::io
 		fd_owner m_fd;
 
 		std::unique_ptr<epoll_event[]> m_events;
-		std::unordered_map<fd_ref, listener_type> m_listeners;
+		std::unordered_map<fd_ref, listener> m_listeners;
 		std::vector<fd_ref> m_fds_to_remove;
 	};
 }
