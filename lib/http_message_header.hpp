@@ -260,6 +260,9 @@ namespace west::http
 
 		bool operator!=(std::string_view other) const
 		{ return m_value != other; }
+		
+		std::string_view value() const
+		{ return m_value; }
 
 	private:
 		explicit request_method(std::string&& string):m_value{std::move(string)}{}
@@ -291,6 +294,9 @@ namespace west::http
 
 		bool operator!=(std::string_view other) const
 		{ return m_value != other; }
+		
+		std::string_view value() const
+		{ return m_value; }
 
 	private:
 		explicit uri(std::string&& string):m_value{std::move(string)}{}

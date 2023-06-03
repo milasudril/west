@@ -80,26 +80,39 @@ namespace
 	class my_request_handler
 	{
 	public:
-		explicit my_request_handler(std::string_view response_body):
-			m_response_body{response_body},
-			m_read_offset{std::begin(m_response_body)}
-		{}
-		
 		auto finalize_state(west::http::request_header const& header)
 		{
-			puts("Finalize read header");
+			puts("Finalize requset header");
+			fflush(stdout);
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = nullptr;
-			saved_header = header;
+
+			m_response_body = header.request_line.method.value();
+			m_response_body
+				.append(" ")
+				.append(header.request_line.request_target.value())
+				.append(" ")
+				.append("HTTP/")
+				.append(to_string(header.request_line.http_version))
+				.append("\r\n");
+
+			for(auto& item : header.fields)
+			{ m_response_body.append(item.first.value()).append(": ").append(item.second).append("\r\n"); }
+
+			m_response_body.append("\r\n");
+
 			return validation_result;
 		}
 
 		auto finalize_state(west::http::field_map& fields)
 		{
 			puts("Finalize read body");
+			fflush(stdout);
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)))
-				.append("Content-Type", "text/html");
+				.append("Content-Type", "text/plain");
+				
+			m_read_offset = std::begin(m_response_body);
 
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
@@ -109,15 +122,19 @@ namespace
 
 		void finalize_state(west::http::field_map& fields, west::http::finalize_state_result&& res)
 		{
+			puts("Error");
+			fflush(stdout);
 			m_error_message = std::move(res.error_message);
-			m_response_body = std::string_view{m_error_message.get()};
+			m_response_body = std::string{m_error_message.get()};
 			m_read_offset = std::begin(m_response_body);
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
 		}
 
 		auto process_request_content(std::span<char const> buffer)
 		{
-			m_request.insert(std::end(m_request), std::begin(buffer), std::end(buffer));
+			puts("Process request content");
+			fflush(stdout);
+			m_response_body.insert(std::end(m_response_body), std::begin(buffer), std::end(buffer));
 			return request_handler_write_result{
 				.bytes_written = std::size(buffer),
 				.ec = request_handler_error_code::no_error
@@ -126,6 +143,8 @@ namespace
 
 		auto read_response_content(std::span<char> buffer)
 		{
+			puts("Read response content");
+			fflush(stdout);
 			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
 			auto const bytes_to_read = std::min(std::size(buffer), n_bytes_left);
 			std::copy_n(m_read_offset, bytes_to_read, std::begin(buffer));
@@ -136,18 +155,17 @@ namespace
 				request_handler_error_code::no_error
 			};
 		}
-		west::http::request_header saved_header;
+
 	private:
 		std::unique_ptr<char[]> m_error_message;
-		std::string_view m_response_body;
-		std::string_view::iterator m_read_offset;
-		std::string m_request;
+		std::string m_response_body;
+		std::string::iterator m_read_offset;
 	};
 	
 	struct http_session_factory
 	{
 		auto create_session(west::io::inet_connection&& connection)
-		{ return west::http::request_processor{std::move(connection), my_request_handler{"<h1>Hello, World</h1>"}}; }
+		{ return west::http::request_processor{std::move(connection), my_request_handler{}}; }
 	};
 }
 
