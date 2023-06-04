@@ -48,7 +48,7 @@ namespace west::io
 			void (*callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
 		};
 		
-		fd_event_monitor():m_fd{epoll_create1(0)}
+		fd_event_monitor():m_fd{epoll_create1(0)},m_reg_should_be_cleared{false}
 		{
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create epoll instance", errno}; }
