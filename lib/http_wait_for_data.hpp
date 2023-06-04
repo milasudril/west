@@ -25,6 +25,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 {
 	if(std::size(buffer.span_to_read()) != 0)
 	{
+		fprintf(stderr, "wait_for_data: Data exists in buffer\n");
+		fflush(stderr);
 		return session_state_response{
 			.status = session_state_status::completed,
 			.state_result = finalize_state_result {
@@ -37,7 +39,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 	auto const read_result = session.connection.read(buffer.span_to_write());
 	buffer.reset_with_new_length(read_result.bytes_read);
 
-	if(read_result.bytes_read == 0)
+	if(read_result.bytes_read == 0 && read_result.ec != io::operation_result::operation_would_block)
 	{
 		return session_state_response{
 			.status = session_state_status::connection_closed,

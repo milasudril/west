@@ -98,7 +98,8 @@ namespace west::io
 		explicit inet_connection(fd_owner fd, inet_address remote_address, uint16_t remote_port):
 			m_fd{std::move(fd)},
 			m_remote_address{remote_address},
-			m_remote_port{remote_port}
+			m_remote_port{remote_port},
+			m_read_disabled{false}
 		{}
 
 		[[nodiscard]] auto remote_port() const
@@ -112,6 +113,14 @@ namespace west::io
 
 		[[nodiscard]] read_result read(std::span<char> buffer)
 		{
+			if(m_read_disabled)
+			{
+				return read_result{
+					.bytes_read = static_cast<size_t>(0),
+					.ec = operation_result::completed
+				};
+			}
+			
 			auto res = ::read(m_fd.get(), std::data(buffer), std::size(buffer));
 			if(res == -1)
 			{
@@ -149,7 +158,10 @@ namespace west::io
 		}
 
 		void stop_reading()
-		{ ::shutdown(m_fd.get(), SHUT_RD); }
+		{ 
+			::shutdown(m_fd.get(), SHUT_RD);
+			m_read_disabled = true;
+		}
 		
 		[[nodiscard]] fd_ref fd() const
 		{ return m_fd.get(); }
@@ -158,6 +170,7 @@ namespace west::io
 		fd_owner m_fd;
 		inet_address m_remote_address;
 		uint16_t m_remote_port;
+		bool m_read_disabled;
 	};
 
 	class inet_server_socket

@@ -80,6 +80,9 @@ namespace
 	public:
 		auto finalize_state(west::http::request_header const& header)
 		{
+			fprintf(stderr, "Finalize read request header\n");
+			fflush(stderr);
+			
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = nullptr;
@@ -103,6 +106,9 @@ namespace
 
 		auto finalize_state(west::http::field_map& fields)
 		{
+			fprintf(stderr, "Finalize read request body\n");
+			fflush(stderr);
+			
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)))
 				.append("Content-Type", "text/plain");
 				
@@ -116,6 +122,9 @@ namespace
 
 		void finalize_state(west::http::field_map& fields, west::http::finalize_state_result&& res)
 		{
+			fprintf(stderr, "Finalize for error state\n");
+			fflush(stderr);
+			
 			m_error_message = std::move(res.error_message);
 			m_response_body = std::string{m_error_message.get()};
 			m_read_offset = std::begin(m_response_body);
@@ -124,6 +133,9 @@ namespace
 
 		auto process_request_content(std::span<char const> buffer)
 		{
+			fprintf(stderr, "Reading request content\n");
+			fflush(stderr);
+			
 			m_response_body.insert(std::end(m_response_body), std::begin(buffer), std::end(buffer));
 			return request_handler_write_result{
 				.bytes_written = std::size(buffer),
@@ -133,6 +145,9 @@ namespace
 
 		auto read_response_content(std::span<char> buffer)
 		{
+			fprintf(stderr, "Writing response body\n");
+			fflush(stderr);
+			
 			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
 			auto const bytes_to_read = std::min(std::size(buffer), n_bytes_left);
 			std::copy_n(m_read_offset, bytes_to_read, std::begin(buffer));
@@ -222,6 +237,8 @@ int main()
 		http.port(),
 		adm.port()
 	);
+	fflush(stdout);
+	
 	west::service_registry services{};
 	services
 		.enroll(std::move(http), http_session_factory{})
