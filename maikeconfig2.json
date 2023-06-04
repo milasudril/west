@@ -66,7 +66,7 @@
                             "-Wconversion",
                             "-Wno-psabi",
                             "-Werror",
-                            "-fconcepts-diagnostics-depth=2"
+                            "-fconcepts-diagnostics-depth=8"
                         ],
                         "iquote": [
                             "."
