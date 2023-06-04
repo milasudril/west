@@ -62,8 +62,6 @@ namespace
 		}
 	}
 
-
-
 	struct request_handler_write_result
 	{
 		size_t bytes_written;
@@ -77,13 +75,11 @@ namespace
 	};
 	
 	
-	class my_request_handler
+	class http_request_handler
 	{
 	public:
 		auto finalize_state(west::http::request_header const& header)
 		{
-			puts("Finalize requset header");
-			fflush(stdout);
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = nullptr;
@@ -107,8 +103,6 @@ namespace
 
 		auto finalize_state(west::http::field_map& fields)
 		{
-			puts("Finalize read body");
-			fflush(stdout);
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)))
 				.append("Content-Type", "text/plain");
 				
@@ -122,8 +116,6 @@ namespace
 
 		void finalize_state(west::http::field_map& fields, west::http::finalize_state_result&& res)
 		{
-			puts("Error");
-			fflush(stdout);
 			m_error_message = std::move(res.error_message);
 			m_response_body = std::string{m_error_message.get()};
 			m_read_offset = std::begin(m_response_body);
@@ -132,8 +124,6 @@ namespace
 
 		auto process_request_content(std::span<char const> buffer)
 		{
-			puts("Process request content");
-			fflush(stdout);
 			m_response_body.insert(std::end(m_response_body), std::begin(buffer), std::end(buffer));
 			return request_handler_write_result{
 				.bytes_written = std::size(buffer),
@@ -143,8 +133,6 @@ namespace
 
 		auto read_response_content(std::span<char> buffer)
 		{
-			puts("Read response content");
-			fflush(stdout);
 			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
 			auto const bytes_to_read = std::min(std::size(buffer), n_bytes_left);
 			std::copy_n(m_read_offset, bytes_to_read, std::begin(buffer));
@@ -165,20 +153,78 @@ namespace
 	struct http_session_factory
 	{
 		auto create_session(west::io::inet_connection&& connection)
-		{ return west::http::request_processor{std::move(connection), my_request_handler{}}; }
+		{ return west::http::request_processor{std::move(connection), http_request_handler{}}; }
+	};
+	
+	enum class adm_session_status{keep_connection, close_connection};
+	
+	constexpr bool is_session_terminated(adm_session_status status)
+	{ return status == adm_session_status::close_connection; }
+	
+	template<class CallbackRegistry>
+	struct adm_request_handler
+	{		
+		west::io::inet_connection connection;
+		CallbackRegistry registry;
+		
+		auto socket_is_ready()
+		{
+			std::array<char, 65536> read_buffer{};
+			auto res = connection.read(read_buffer);
+			if(res.bytes_read == 0)
+			{
+				switch(res.ec)
+				{
+					case west::io::operation_result::operation_would_block:
+						return adm_session_status::keep_connection;
+					case west::io::operation_result::completed:
+						return adm_session_status::close_connection;
+					case west::io::operation_result::error:
+						return adm_session_status::close_connection;
+				}
+			}
+			else
+			{
+				if(std::string_view{std::data(read_buffer), res.bytes_read} == "shutdown")
+				{ registry.clear(); }
+			}
+			
+			return adm_session_status::keep_connection;
+		}
+	};
+
+	template<class CallbackRegistry>
+	struct adm_session_factory
+	{
+		auto create_session(west::io::inet_connection&& connection)
+		{ return adm_request_handler{std::move(connection), registry}; }
+
+		CallbackRegistry registry;
 	};
 }
 
 int main()
 {
 	west::io::inet_address address{"127.0.0.1"};
-	west::io::inet_server_socket server_socket{
+	west::io::inet_server_socket http{
 		address,
 		std::ranges::iota_view{49152, 65536},
 		128
 	};
-	printf("Server is listening on port %u\n", server_socket.port());
-	west::service_registry{}
-		.enroll(std::move(server_socket), http_session_factory{})
+	west::io::inet_server_socket adm{
+		address,
+		std::ranges::iota_view{49152, 65536},
+		128
+	};
+
+	printf("http %u\n"
+		"adm %u\n",
+		http.port(),
+		adm.port()
+	);
+	west::service_registry services{};
+	services
+		.enroll(std::move(http), http_session_factory{})
+		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }

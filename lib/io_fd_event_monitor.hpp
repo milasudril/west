@@ -32,6 +32,9 @@ namespace west::io
 		void remove(fd_ref fd)
 		{ m_registry.get().deferred_remove(fd);}
 		
+		void clear()
+		{ m_registry.get().deferred_clear(); }
+		
 	private:
 		std::reference_wrapper<FdCallbackRegistry> m_registry;
 	};
@@ -112,16 +115,26 @@ namespace west::io
 		void deferred_remove(fd_ref fd)
 		{ m_fds_to_remove.push_back(fd); }
 		
+		void deferred_clear()
+		{
+			m_reg_should_be_cleared = true;
+		}
+		
 		void flush_fds_to_remove()
 		{
-			for(auto fd : m_fds_to_remove)
-			{ 
-				epoll_event event{};
-				::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd , &event);
-				m_listeners.erase(fd); 
-			}
+			if(m_reg_should_be_cleared)
+			{ *this = fd_event_monitor{}; }
+			else
+			{
+				for(auto fd : m_fds_to_remove)
+				{ 
+					epoll_event event{};
+					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd , &event);
+					m_listeners.erase(fd); 
+				}
 
-			m_fds_to_remove.clear();
+				m_fds_to_remove.clear();
+			}
 		}
 
 	private:
@@ -130,6 +143,7 @@ namespace west::io
 		std::unique_ptr<epoll_event[]> m_events;
 		std::unordered_map<fd_ref, listener> m_listeners;
 		std::vector<fd_ref> m_fds_to_remove;
+		bool m_reg_should_be_cleared;
 	};
 }
 
