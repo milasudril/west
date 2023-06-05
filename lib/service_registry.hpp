@@ -56,11 +56,15 @@ namespace west
 		auto connection = server_socket.accept();
 		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
-		event_monitor.add(conn_fd,
+		event_monitor.add_input(conn_fd,
 			[session = session_factory.create_session(std::move(connection))]
 			(auto event_monitor, io::fd_ref fd) mutable {
-				if(is_session_terminated(session.socket_is_ready()))
-				{ event_monitor.remove(fd); }
+				auto result = session.socket_is_ready();
+				if(is_session_terminated(result)) [[unlikely]]
+				{
+					event_monitor.remove(fd);
+					return;
+				}
 			}
 		);
 	}

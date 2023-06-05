@@ -23,9 +23,23 @@ namespace west::io
 		{}
 		
 		template<class T>
-		fd_callback_registry_ref& add(fd_ref fd, T&& l)		
+		fd_callback_registry_ref& add(fd_ref fd, T&& l, uint32_t events = EPOLLIN | EPOLLOUT)		
 		{
-			m_registry.get().add(fd, std::forward<T>(l));
+			m_registry.get().add(fd, std::forward<T>(l), events);
+			return *this;
+		}
+		
+		template<class T>
+		fd_callback_registry_ref& add_input(fd_ref fd, T&& l)
+		{ 
+			m_registry.get().add_input(fd, std::forward<T>(l));
+			return *this;
+		}
+		
+		template<class T>
+		fd_callback_registry_ref& add_output(fd_ref fd, T&& l)
+		{ 
+			m_registry.get().add_output(fd, std::forward<T>(l));
 			return *this;
 		}
 		
@@ -91,11 +105,11 @@ namespace west::io
 		}
 		
 		template<class FdEventListener>
-		fd_event_monitor add_input(fd_ref fd, FdEventListener&& l)
+		fd_event_monitor& add_input(fd_ref fd, FdEventListener&& l)
 		{ return add(fd, std::forward<FdEventListener>(l), EPOLLIN); }
 		
 		template<class FdEventListener>
-		fd_event_monitor add_output(fd_ref fd, FdEventListener&& l)
+		fd_event_monitor& add_output(fd_ref fd, FdEventListener&& l)
 		{ return add(fd, std::forward<FdEventListener>(l), EPOLLOUT); }
 
 		template<class FdEventListener>
