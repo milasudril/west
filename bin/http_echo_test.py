@@ -11,6 +11,8 @@ import subprocess
 import io
 import socket
 import pytest
+import time
+import psutil
 
 http_session_data = 	data = [{'request': '''POST /first_request HTTP/1.1
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
@@ -91,6 +93,10 @@ User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113
 '''.replace('\n', '\r\n') + '''data=Aliquam+nec+sem+odio.+Curabitur+scelerisque+a+nisi+quis+maximus.+Cras+nisl+ex%2C+posuere+non+lorem+at%2C+finibus+commodo+purus.+Vestibulum+non+orci+ac+ligula+pellentesque+tincidunt.+Praesent+vel+aliquet+metus.+Donec+elementum%2C+elit+at+finibus+dictum%2C+metus+velit+condimentum+nibh%2C+a+imperdiet+odio+lacus+sit+amet+eros.+Donec+convallis+sit+amet+urna+vitae+lobortis.+'''}
 ]
 
+def get_cpu_usage(pid):
+	time.sleep(2)
+	return psutil.Process(pid).cpu_percent(1.0)/100.0
+
 def get_ports(text_src):
 	ret = {}
 	for line in text_src:
@@ -112,16 +118,21 @@ class run_params:
 	
 def init_test_suite(args):
 	pytest.testsuite_args = run_params(args)
-	
+
+class server_process:
+	def __init__(self, http_port, pid):
+		self.http_port = http_port
+		self.pid = pid
+
 @pytest.fixture
-def http_port():
+def server():
 	with subprocess.Popen(pytest.testsuite_args.executable, stdout = subprocess.PIPE) as server_proc:
 		ports = get_ports(io.TextIOWrapper(server_proc.stdout, encoding="utf-8"))
-		yield ports['http']
+		yield server_process(ports['http'], server_proc.pid)
 		talk_adm(ports['adm'])
 
-def test_process_two_synchronous_requests(http_port):
-	with socket.create_connection(('127.0.0.1', http_port)) as connection:
+def test_process_two_requests_read_response_inbetween(server):
+	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
 		with connection.makefile('rwb') as connfile:
 			for item in http_session_data:
 				request = item['request']
@@ -130,11 +141,43 @@ def test_process_two_synchronous_requests(http_port):
 				connfile.flush()
 				result = connfile.read(len(response))
 				assert response == result.decode()
-	
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
+
+def test_process_two_requests_read_response_after_sending_reqs(server):
+	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+		with connection.makefile('rwb') as connfile:
+			for item in http_session_data:
+				request = item['request']
+				connfile.write(str.encode(request))
+				connfile.flush()
+			for item in http_session_data:
+				response = item['response']
+				result = connfile.read(len(response))
+				assert response == result.decode()
+			
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
+
+def test_process_two_requests_read_only_one_response_after_sending_reqs(server):
+	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+		with connection.makefile('rwb') as connfile:
+			for item in http_session_data:
+				request = item['request']
+				connfile.write(str.encode(request))
+				connfile.flush()
+
+			response = http_session_data[0]['response']
+			result = connfile.read(len(response))
+			assert response == result.decode()
+			
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
+
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
-		return pytest.main([__file__])
+		return pytest.main(['--verbose', __file__])
 	
 if __name__ == '__main__':
-	main(sys.argv)
+	exit(main(sys.argv))
