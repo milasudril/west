@@ -12,18 +12,7 @@ import io
 import socket
 import pytest
 
-def get_ports(text_src):
-	ret = {}
-	for line in text_src:
-		stripped_line = line.rstrip()
-		keyval = stripped_line.split(' ')
-		if keyval[0] == 'http' or keyval[0] == 'adm':
-			ret[keyval[0]] = int(keyval[1])
-		if 'http' in ret and 'adm' in ret:
-			return ret
-
-def talk_http(port):
-	data = [{'request': '''POST /first_request HTTP/1.1
+http_session_data = 	data = [{'request': '''POST /first_request HTTP/1.1
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
 Accept-Encoding: gzip, deflate, br
 Accept-Language: en-US,en;q=0.5
@@ -100,11 +89,23 @@ Upgrade-Insecure-Requests: 1
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0
 
 '''.replace('\n', '\r\n') + '''data=Aliquam+nec+sem+odio.+Curabitur+scelerisque+a+nisi+quis+maximus.+Cras+nisl+ex%2C+posuere+non+lorem+at%2C+finibus+commodo+purus.+Vestibulum+non+orci+ac+ligula+pellentesque+tincidunt.+Praesent+vel+aliquet+metus.+Donec+elementum%2C+elit+at+finibus+dictum%2C+metus+velit+condimentum+nibh%2C+a+imperdiet+odio+lacus+sit+amet+eros.+Donec+convallis+sit+amet+urna+vitae+lobortis.+'''}
-]	
+]
+
+def get_ports(text_src):
+	ret = {}
+	for line in text_src:
+		stripped_line = line.rstrip()
+		keyval = stripped_line.split(' ')
+		if keyval[0] == 'http' or keyval[0] == 'adm':
+			ret[keyval[0]] = int(keyval[1])
+		if 'http' in ret and 'adm' in ret:
+			return ret
+
+def talk_http(port):	
 	with socket.create_connection(('127.0.0.1', port)) as connection:
 		with connection.makefile('rwb') as connfile:
 			k = 0
-			for item in data:
+			for item in http_session_data:
 				request = item['request']
 				response = item['response']
 				connfile.write(str.encode(request))
