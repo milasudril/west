@@ -129,6 +129,8 @@ namespace west::http
 
 
 
+	enum class session_state_io_direction{input, output};
+
 	inline auto make_state_handler(request_state_holder const& initial_state,
 		request_info const& request,
 		response_info const& response)

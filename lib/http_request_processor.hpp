@@ -7,13 +7,11 @@
 namespace west::http
 {
 	enum class request_processor_status{completed, more_data_needed, application_error, io_error};
-
-	enum class request_processor_io_state{read_request, write_response};
 	
 	struct process_request_result
 	{
 		request_processor_status status;
-		request_processor_io_state io_state;
+		session_state_io_direction io_state;
 	};
 
 	template<io::socket Socket, request_handler RequestHandler>
