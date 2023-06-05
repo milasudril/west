@@ -42,10 +42,16 @@ namespace west::http
 						break;
 
 					case session_state_status::connection_closed:
-						return request_processor_status::completed;
+						return process_request_result{
+							request_processor_status::completed,
+							m_state.second
+						};
 
 					case session_state_status::more_data_needed:
-						return request_processor_status::more_data_needed;
+						return process_request_result{
+							request_processor_status::more_data_needed,
+							m_state.second
+						};
 
 					case session_state_status::client_error_detected:
 					{
@@ -67,10 +73,16 @@ namespace west::http
 					}
 
 					case session_state_status::write_response_failed:
-						return request_processor_status::application_error;
+						return process_request_result{
+							request_processor_status::application_error,
+							m_state.second
+						};
 
 					case session_state_status::io_error:
-						return request_processor_status::io_error;
+						return process_request_result{
+							request_processor_status::io_error,
+							m_state.second
+						};
 				}
 			}
 		}
@@ -97,5 +109,8 @@ namespace west::http
 			|| status == request_processor_status::application_error
 			|| status == request_processor_status::completed;
 	}
+	
+	constexpr bool is_session_terminated(process_request_result res)
+	{ return is_session_terminated(res.status); }
 }
 #endif
