@@ -10,6 +10,7 @@ import json
 import subprocess
 import io
 import socket
+import pytest
 
 def get_ports(text_src):
 	ret = {}
@@ -120,21 +121,29 @@ User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113
 def talk_adm(port):
 	with socket.create_connection(('127.0.0.1', port)) as connection:
 		connection.sendall(str.encode('shutdown'))
-
-def compile(args):
-	# TODO: Compute  path to executable based on location of this file
-	executable = args['build_info']['target_dir'] + '/bin/http_echo'
-	target = args['targets'][0]
-	exit_status = 0
-	with subprocess.Popen(executable, stdout = subprocess.PIPE) as server_proc:
+		
+class run_params:
+	def __init__(self, args):
+		self.executable = args['build_info']['target_dir'] + '/bin/http_echo'
+		self.target = args['targets'][0]
+	
+def init_test_suite(args):
+	pytest.testsuite_args = run_params(args)
+	
+@pytest.fixture
+def http_port():
+	with subprocess.Popen(pytest.testsuite_args.executable, stdout = subprocess.PIPE) as server_proc:
 		ports = get_ports(io.TextIOWrapper(server_proc.stdout, encoding="utf-8"))
-		server_proc.stdout.close()
-		if talk_http(ports['http']) != 0:
-			exit_status = 1
+		yield ports['http']
 		talk_adm(ports['adm'])
-		return exit_status
-	with open(target, 'w') as result:
-		print('Testcase passed')
 
-if sys.argv[1] == 'compile':
-	exit(compile(json.loads(sys.argv[2])))
+def test_process_two_requests(http_port):
+	talk_http(http_port)
+	
+def main(argv):
+	if sys.argv[1] == 'compile':
+		init_test_suite(json.loads(sys.argv[2]))
+		return pytest.main([__file__])
+	
+if __name__ == '__main__':
+	main(sys.argv)
