@@ -46,31 +46,6 @@ namespace west::http
 
 
 	template<class T>
-	struct select_buffer_index{};
-
-	template<>
-	struct select_buffer_index<read_request_header>
-	{ static constexpr size_t value = 0; };
-
-	template<>
-	struct select_buffer_index<read_request_body>
-	{ static constexpr size_t value = 0; };
-
-	template<>
-	struct select_buffer_index<write_response_header>
-	{ static constexpr size_t value = 1; };
-
-	template<>
-	struct select_buffer_index<write_response_body>
-	{ static constexpr size_t value = 1; };
-
-	template<>
-	struct select_buffer_index<wait_for_data>
-	{ static constexpr size_t value = 0; };
-
-
-
-	template<class T>
 	inline auto make_state_handler(request_info const&, response_info const&);
 
 	template<>
@@ -154,6 +129,15 @@ namespace west::http
 	struct select_io_direction<wait_for_data>
 	{ static constexpr auto value = session_state_io_direction::input; };
 	
+
+	
+	template<class T>
+	struct select_buffer_index
+	{
+		static constexpr size_t value = 
+			select_io_direction<T>::value == session_state_io_direction::input?	 0 : 1;
+	};
+
 
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
