@@ -218,6 +218,20 @@ namespace
 	};
 }
 
+template<>
+struct west::session_state_mapper<west::http::request_processor_status>
+{
+	constexpr auto operator()(http::request_processor_status) const
+	{ return io::listen_on::read_is_possible; }
+};
+
+template<>
+struct west::session_state_mapper<adm_session_status>
+{
+	constexpr auto operator()(adm_session_status) const
+	{ return io::listen_on::read_is_possible; }
+};
+
 int main()
 {
 	west::io::inet_address address{"127.0.0.1"};

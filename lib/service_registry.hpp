@@ -46,6 +46,9 @@ namespace west
 		};
 	}
 	
+	template<class T>
+	struct session_state_mapper;
+	
 	template<class EventMonitor, server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
 	void accept_connection(
@@ -57,13 +60,20 @@ namespace west
 		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
 		event_monitor.add(conn_fd,
-			[session = session_factory.create_session(std::move(connection))]
+			[session = session_factory.create_session(std::move(connection)),
+			 events = io::listen_on::read_is_possible]
 			(auto event_monitor, io::fd_ref fd) mutable {
 				auto result = session.socket_is_ready();
 				if(is_session_terminated(result)) [[unlikely]]
 				{
 					event_monitor.remove(fd);
 					return;
+				}
+				
+				if(auto new_events = session_state_mapper<std::remove_cvref_t<decltype(result)>>{}(result); new_events != events)
+				{
+					event_monitor.modify(fd, new_events);
+					events = new_events;
 				}
 			},
 			io::listen_on::read_is_possible

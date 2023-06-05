@@ -35,14 +35,14 @@ namespace west::io
 			return *this;
 		}
 
+		void modify(fd_ref fd, listen_on new_events)
+		{ m_registry.get().modify(fd, new_events); }
+
 		void remove(fd_ref fd)
 		{ m_registry.get().deferred_remove(fd);}
 		
 		void clear()
 		{ m_registry.get().deferred_clear(); }
-
-		void modify(fd_ref fd, listen_on new_events)
-		{ m_registry.get().modify(new_events); }
 		
 	private:
 		std::reference_wrapper<FdCallbackRegistry> m_registry;

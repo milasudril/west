@@ -66,6 +66,14 @@ namespace
 	};
 }
 
+template<>
+struct west::session_state_mapper<session_status>
+{
+	template<class T>
+	constexpr auto operator()(T) const
+	{ return io::listen_on::readwrite_is_possible; }
+};
+
 TESTCASE(west_service_registry_enroll)
 {
 	west::io::inet_address address{"127.0.0.1"};
