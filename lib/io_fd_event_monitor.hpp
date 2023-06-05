@@ -35,6 +35,15 @@ namespace west::io
 		void clear()
 		{ m_registry.get().deferred_clear(); }
 		
+		void listen_on_read(fd_ref fd)
+		{ m_registry.get().listen_on_read(fd); }
+
+		void listen_on_write(fd_ref fd)
+		{ m_registry.get().listen_on_write(fd); }
+
+		void modify(fd_ref fd, uint32_t new_events)
+		{ m_registry.get().modify(new_events); }
+		
 	private:
 		std::reference_wrapper<FdCallbackRegistry> m_registry;
 	};
@@ -80,6 +89,14 @@ namespace west::io
 			flush_fds_to_remove();
 			return true;
 		}
+		
+		template<class FdEventListener>
+		fd_event_monitor add_input(fd_ref fd, FdEventListener&& l)
+		{ return add(fd, std::forward<FdEventListener>(l), EPOLLIN); }
+		
+		template<class FdEventListener>
+		fd_event_monitor add_output(fd_ref fd, FdEventListener&& l)
+		{ return add(fd, std::forward<FdEventListener>(l), EPOLLOUT); }
 
 		template<class FdEventListener>
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, uint32_t events = EPOLLIN | EPOLLOUT)
@@ -110,6 +127,24 @@ namespace west::io
 
 			m_events = std::make_unique_for_overwrite<epoll_event[]>(std::size(m_listeners));
 			return *this;
+		}
+		
+		void listen_on_read(fd_ref fd)
+		{ modify(fd, EPOLLIN); }
+
+		void listen_on_write(fd_ref fd)
+		{ modify(fd, EPOLLOUT); }
+
+		void modify(fd_ref fd, uint32_t new_events)
+		{
+			auto const i = m_listeners.find(fd);
+			assert(i != std::end(m_listeners));
+			epoll_event event{
+				.events = new_events,
+				.data = &(*i)
+			};
+			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_MOD, fd, &event) == -1)
+			{ throw system_error{"Failed to modify event listener", errno}; }
 		}
 		
 		void deferred_remove(fd_ref fd)
