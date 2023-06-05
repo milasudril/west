@@ -130,6 +130,31 @@ namespace west::http
 
 
 	enum class session_state_io_direction{input, output};
+	
+	template<class T>
+	struct select_io_direction{};
+
+	template<>
+	struct select_io_direction<read_request_header>
+	{ static constexpr auto value = session_state_io_direction::input; };
+
+	template<>
+	struct select_io_direction<read_request_body>
+	{ static constexpr auto value = session_state_io_direction::input; };
+
+	template<>
+	struct select_io_direction<write_response_header>
+	{ static constexpr auto value = session_state_io_direction::output; };
+
+	template<>
+	struct select_io_direction<write_response_body>
+	{ static constexpr auto value = session_state_io_direction::output; };
+
+	template<>
+	struct select_io_direction<wait_for_data>
+	{ static constexpr auto value = session_state_io_direction::input; };
+	
+
 
 	inline auto make_state_handler(request_state_holder const& initial_state,
 		request_info const& request,
