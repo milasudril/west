@@ -11,7 +11,7 @@ namespace west::http
 	struct process_request_result
 	{
 		request_processor_status status;
-		session_state_io_direction io_state;
+		session_state_io_direction io_dir;
 	};
 
 	template<io::socket Socket, request_handler RequestHandler>
