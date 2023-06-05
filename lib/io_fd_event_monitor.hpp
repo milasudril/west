@@ -14,6 +14,12 @@
 
 namespace west::io
 {
+	enum class listen_on {
+		read_is_possible = EPOLLIN,
+		write_is_possible = EPOLLOUT,
+		readwrite_is_possible = EPOLLIN|EPOLLOUT
+	};
+	
 	template<class FdCallbackRegistry>
 	class fd_callback_registry_ref
 	{
@@ -23,39 +29,19 @@ namespace west::io
 		{}
 		
 		template<class T>
-		fd_callback_registry_ref& add(fd_ref fd, T&& l, uint32_t events = EPOLLIN | EPOLLOUT)		
+		fd_callback_registry_ref& add(fd_ref fd, T&& l, listen_on events = listen_on::readwrite_is_possible)
 		{
 			m_registry.get().add(fd, std::forward<T>(l), events);
 			return *this;
 		}
-		
-		template<class T>
-		fd_callback_registry_ref& add_input(fd_ref fd, T&& l)
-		{ 
-			m_registry.get().add_input(fd, std::forward<T>(l));
-			return *this;
-		}
-		
-		template<class T>
-		fd_callback_registry_ref& add_output(fd_ref fd, T&& l)
-		{ 
-			m_registry.get().add_output(fd, std::forward<T>(l));
-			return *this;
-		}
-		
+
 		void remove(fd_ref fd)
 		{ m_registry.get().deferred_remove(fd);}
 		
 		void clear()
 		{ m_registry.get().deferred_clear(); }
-		
-		void listen_on_read(fd_ref fd)
-		{ m_registry.get().listen_on_read(fd); }
 
-		void listen_on_write(fd_ref fd)
-		{ m_registry.get().listen_on_write(fd); }
-
-		void modify(fd_ref fd, uint32_t new_events)
+		void modify(fd_ref fd, listen_on new_events)
 		{ m_registry.get().modify(new_events); }
 		
 	private:
@@ -113,7 +99,7 @@ namespace west::io
 		{ return add(fd, std::forward<FdEventListener>(l), EPOLLOUT); }
 
 		template<class FdEventListener>
-		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, uint32_t events = EPOLLIN | EPOLLOUT)
+		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, listen_on events = listen_on::readwrite_is_possible)
 		{
 			assert(!m_listeners.contains(fd));
 			auto const i = m_listeners.insert(std::pair{
@@ -128,7 +114,7 @@ namespace west::io
 			});
 
 			epoll_event event{
-				.events = events,
+				.events = static_cast<uint32_t>(events),
 				.data = &(*i.first)
 			};
 
@@ -142,19 +128,13 @@ namespace west::io
 			m_events = std::make_unique_for_overwrite<epoll_event[]>(std::size(m_listeners));
 			return *this;
 		}
-		
-		void listen_on_read(fd_ref fd)
-		{ modify(fd, EPOLLIN); }
 
-		void listen_on_write(fd_ref fd)
-		{ modify(fd, EPOLLOUT); }
-
-		void modify(fd_ref fd, uint32_t new_events)
+		void modify(fd_ref fd, listen_on new_events)
 		{
 			auto const i = m_listeners.find(fd);
 			assert(i != std::end(m_listeners));
 			epoll_event event{
-				.events = new_events,
+				.events = static_cast<uint32_t>(new_events),
 				.data = &(*i)
 			};
 			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_MOD, fd, &event) == -1)

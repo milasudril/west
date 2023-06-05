@@ -56,7 +56,7 @@ namespace west
 		auto connection = server_socket.accept();
 		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
-		event_monitor.add_input(conn_fd,
+		event_monitor.add(conn_fd,
 			[session = session_factory.create_session(std::move(connection))]
 			(auto event_monitor, io::fd_ref fd) mutable {
 				auto result = session.socket_is_ready();
@@ -65,7 +65,8 @@ namespace west
 					event_monitor.remove(fd);
 					return;
 				}
-			}
+			},
+			io::listen_on::read_is_possible
 		);
 	}
 	
