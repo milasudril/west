@@ -82,7 +82,7 @@ namespace west::io
 		}
 
 		template<class FdEventListener>
-		fd_event_monitor& add(fd_ref fd, FdEventListener&& l)
+		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, uint32_t events = EPOLLIN | EPOLLOUT)
 		{
 			assert(!m_listeners.contains(fd));
 			auto const i = m_listeners.insert(std::pair{
@@ -97,7 +97,7 @@ namespace west::io
 			});
 
 			epoll_event event{
-				.events = EPOLLIN | EPOLLOUT,
+				.events = events,
 				.data = &(*i.first)
 			};
 
@@ -116,9 +116,7 @@ namespace west::io
 		{ m_fds_to_remove.push_back(fd); }
 		
 		void deferred_clear()
-		{
-			m_reg_should_be_cleared = true;
-		}
+		{ m_reg_should_be_cleared = true; }
 		
 		void flush_fds_to_remove()
 		{

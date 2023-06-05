@@ -111,7 +111,7 @@ TESTCASE(west_io_fd_event_monitor_monitor_pipe_write_end)
 
 	monitor.add(pipe.write_end.get(), std::ref(write_activated));
 
-	// Write should be possible now
+	// Write should be possible now. It is woken, because write is initially possible.
 	EXPECT_EQ(monitor.wait_for_and_dispatch_events(), true);
 	EXPECT_EQ(write_activated.callcount, 1);
 
