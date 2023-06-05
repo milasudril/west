@@ -101,24 +101,6 @@ def get_ports(text_src):
 		if 'http' in ret and 'adm' in ret:
 			return ret
 
-def talk_http(port):	
-	with socket.create_connection(('127.0.0.1', port)) as connection:
-		with connection.makefile('rwb') as connfile:
-			k = 0
-			for item in http_session_data:
-				request = item['request']
-				response = item['response']
-				connfile.write(str.encode(request))
-				connfile.flush()
-				result = connfile.read(len(response))
-				k = k + 1
-				if response != result.decode():
-					print('Request %d: {%s}'%(k, request))
-					print('Unexpected response: {%s}'%result.decode())
-					print('Expected: {%s}'%response)
-					return 1
-	return 0
-
 def talk_adm(port):
 	with socket.create_connection(('127.0.0.1', port)) as connection:
 		connection.sendall(str.encode('shutdown'))
@@ -138,8 +120,16 @@ def http_port():
 		yield ports['http']
 		talk_adm(ports['adm'])
 
-def test_process_two_requests(http_port):
-	talk_http(http_port)
+def test_process_two_synchronous_requests(http_port):
+	with socket.create_connection(('127.0.0.1', http_port)) as connection:
+		with connection.makefile('rwb') as connfile:
+			for item in http_session_data:
+				request = item['request']
+				response = item['response']
+				connfile.write(str.encode(request))
+				connfile.flush()
+				result = connfile.read(len(response))
+				assert response == result.decode()
 	
 def main(argv):
 	if sys.argv[1] == 'compile':
