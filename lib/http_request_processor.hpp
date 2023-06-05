@@ -33,12 +33,12 @@ namespace west::http
 			{
 				auto res = std::visit([this]<class T>(T& state){
 					return state(std::get<select_buffer_index<T>::value>(m_buff_spans), m_session);
-				}, m_state);
+				}, m_state.first);
 
 				switch(res.status)
 				{
 					case session_state_status::completed:
-						m_state = make_state_handler(m_state, m_session.request_info, m_session.response_info);
+						m_state = make_state_handler(m_state.first, m_session.request_info, m_session.response_info);
 						break;
 
 					case session_state_status::connection_closed:
@@ -59,7 +59,10 @@ namespace west::http
 						m_session.response_info.header.status_line.status_code = saved_http_status;
 						m_session.response_info.header.status_line.reason_phrase = to_string(saved_http_status);
 
-						m_state = write_response_header{m_session.response_info.header};
+						m_state = std::pair{
+							write_response_header{m_session.response_info.header},
+							session_state_io_direction::output
+						};
 						break;
 					}
 
@@ -80,7 +83,7 @@ namespace west::http
 
 	private:
 		struct session<Socket, RequestHandler> m_session;
-		request_state_holder m_state;
+		std::pair<request_state_holder, session_state_io_direction> m_state;
 		std::unique_ptr<buffer_type> m_recv_buffer;
 		std::unique_ptr<buffer_type> m_send_buffer;
 

@@ -146,7 +146,10 @@ namespace west::http
 	{
 		return std::visit([&request, response]<class T>(T const&) {
 			using next_state_handler = next_request_state<T>::state_handler;
-			return request_state_holder{make_state_handler<next_state_handler>(request, response)};
+			return std::pair{
+				request_state_holder{make_state_handler<next_state_handler>(request, response)},
+				select_io_direction<next_state_handler>::value
+			};
 		}, initial_state);
 	}
 }
