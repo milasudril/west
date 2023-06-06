@@ -74,8 +74,7 @@ namespace
 		size_t bytes_read;
 		request_handler_error_code ec;
 	};
-	
-	
+
 	class http_request_handler
 	{
 	public:
@@ -242,8 +241,7 @@ int main()
 	fflush(stdout);
 	
 	west::service_registry services{};
-	services
-		.enroll(std::move(http), west::http::session_factory<http_request_handler>{})
+	enroll_http_service<http_request_handler>(services, std::move(http))
 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }

@@ -1,8 +1,9 @@
 #ifndef WEST_HTTP_SERVER_HPP
 #define WEST_HTTP_SERVER_HPP
 
-#include "./io_fd_event_monitor.hpp"
+#include "./service_registry.hpp"
 #include "./http_request_processor.hpp"
+#include "./http_session_factory.hpp"
 
 template<>
 struct west::session_state_mapper<west::http::process_request_result>
@@ -20,5 +21,17 @@ struct west::session_state_mapper<west::http::process_request_result>
 		}
 	}
 };
+
+namespace west
+{
+	template<class RequestHandler, class ... Args>
+	auto& enroll_http_service(service_registry& registry,
+		io::inet_server_socket&& server,
+		Args&& ... session_factory_args)
+	{
+		return registry.enroll(std::move(server),
+			http::session_factory<RequestHandler>{std::forward<Args>(session_factory_args)...});
+	}
+}
 
 #endif
