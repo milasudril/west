@@ -75,7 +75,7 @@ namespace
 		request_handler_error_code ec;
 	};
 
-	class http_request_handler
+	class echo_http_request
 	{
 	public:
 		auto finalize_state(west::http::request_header const& header)
@@ -241,7 +241,7 @@ int main()
 	fflush(stdout);
 	
 	west::service_registry services{};
-	enroll_http_service<http_request_handler>(services, std::move(http))
+	enroll_http_service<echo_http_request>(services, std::move(http))
 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }
