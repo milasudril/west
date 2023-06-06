@@ -3,8 +3,8 @@
 #include "lib/io_inet_server_socket.hpp"
 #include "lib/service_registry.hpp"
 #include "lib/http_request_handler.hpp"
-#include "lib/http_request_processor.hpp"
 #include "lib/http_session_factory.hpp"
+#include "lib/http_server.hpp"
 
 #include <string>
 
@@ -212,23 +212,6 @@ namespace
 		CallbackRegistry registry;
 	};
 }
-
-template<>
-struct west::session_state_mapper<west::http::process_request_result>
-{
-	constexpr auto operator()(http::process_request_result res) const
-	{ 
-		switch(res.io_dir)
-		{
-			case http::session_state_io_direction::input:
-				return io::listen_on::read_is_possible;
-			case http::session_state_io_direction::output:
-				return io::listen_on::write_is_possible;
-			default:
-				__builtin_unreachable();
-		}
-	}
-};
 
 template<>
 struct west::session_state_mapper<adm_session_status>
