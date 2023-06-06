@@ -214,14 +214,6 @@ namespace
 }
 
 template<>
-struct west::session_state_mapper<west::http::request_processor_status>
-{
-	constexpr auto operator()(http::request_processor_status) const
-	{ return io::listen_on::read_is_possible; }
-};
-
-
-template<>
 struct west::session_state_mapper<west::http::process_request_result>
 {
 	constexpr auto operator()(http::process_request_result res) const
