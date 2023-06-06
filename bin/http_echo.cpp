@@ -4,6 +4,7 @@
 #include "lib/service_registry.hpp"
 #include "lib/http_request_handler.hpp"
 #include "lib/http_request_processor.hpp"
+#include "lib/http_session_factory.hpp"
 
 #include <string>
 
@@ -163,13 +164,7 @@ namespace
 		std::unique_ptr<char[]> m_error_message;
 		std::string m_response_body;
 		std::string::iterator m_read_offset;
-	};
-	
-	struct http_session_factory
-	{
-		auto create_session(west::io::inet_connection&& connection)
-		{ return west::http::request_processor{std::move(connection), http_request_handler{}}; }
-	};
+	};	
 	
 	enum class adm_session_status{keep_connection, close_connection};
 	
@@ -273,7 +268,7 @@ int main()
 	
 	west::service_registry services{};
 	services
-		.enroll(std::move(http), http_session_factory{})
+		.enroll(std::move(http), west::http::session_factory<http_request_handler>{})
 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }
