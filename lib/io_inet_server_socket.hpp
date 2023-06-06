@@ -100,7 +100,7 @@ namespace west::io
 			m_remote_address{remote_address},
 			m_remote_port{remote_port},
 			m_read_disabled{false}
-		{}
+		{ }
 
 		[[nodiscard]] auto remote_port() const
 		{ return m_remote_port; }
@@ -140,7 +140,7 @@ namespace west::io
 
 		[[nodiscard]] write_result write(std::span<char const> buffer)
 		{
-			auto res = ::write(m_fd.get(), std::data(buffer), std::size(buffer));
+			auto res = ::send(m_fd.get(), std::data(buffer), std::size(buffer), MSG_NOSIGNAL);
 			if(res == -1)
 			{
 				return write_result{

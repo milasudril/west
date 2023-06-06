@@ -13,6 +13,8 @@ import socket
 import pytest
 import time
 import psutil
+import os
+import signal
 
 http_session_data = 	data = [{'request': '''POST /first_request HTTP/1.1
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
@@ -124,12 +126,24 @@ class server_process:
 		self.http_port = http_port
 		self.pid = pid
 
+def with_server(server_executable, func):
+	with subprocess.Popen([server_executable], stdout = subprocess.PIPE) as server_proc:
+		ports = get_ports(io.TextIOWrapper(server_proc.stdout, encoding="utf-8"))
+		func(server_process(ports['http'], server_proc.pid))
+		talk_adm(ports['adm'])
+		wait_res = os.waitpid(server_proc.pid, 0)
+		assert wait_res[0] == server_proc.pid
+		assert os.waitstatus_to_exitcode(wait_res[1]) == 0
+
 @pytest.fixture
 def server():
 	with subprocess.Popen(pytest.testsuite_args.executable, stdout = subprocess.PIPE) as server_proc:
 		ports = get_ports(io.TextIOWrapper(server_proc.stdout, encoding="utf-8"))
 		yield server_process(ports['http'], server_proc.pid)
 		talk_adm(ports['adm'])
+		wait_res = os.waitpid(server_proc.pid, 0)
+		assert wait_res[0] == server_proc.pid
+		assert os.waitstatus_to_exitcode(wait_res[1]) == 0
 
 def test_process_two_requests_read_response_inbetween(server):
 	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
@@ -170,14 +184,32 @@ def test_process_two_requests_read_only_one_response_after_sending_reqs(server):
 			response = http_session_data[0]['response']
 			result = connfile.read(len(response))
 			assert response == result.decode()
-			
+
 			cpu_usage = get_cpu_usage(server.pid)
 			assert cpu_usage < 0.5
+
+def test_read_response_without_request():
+	def handler(server):
+		pid = os.fork()
+		if pid == 0:
+			with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+				with connection.makefile('rwb') as connfile:
+					response = http_session_data[0]['response']
+					result = connfile.read(len(response))
+					exit(1)
+		else:
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
+			os.kill(pid, signal.SIGKILL)
+			os.waitpid(pid, 0)
+
+	with_server(pytest.testsuite_args.executable, handler)
 
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
-		return pytest.main(['--verbose', __file__])
+		return pytest.main(['--verbose',  __file__])
 	
 if __name__ == '__main__':
 	exit(main(sys.argv))
+	
