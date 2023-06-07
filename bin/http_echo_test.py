@@ -2,7 +2,7 @@
 
 #@	{
 #@	"target":{"name":"http_echo_test_result.txt"},
-#@	"dependencies":[{"ref":"./http_echo"}]
+#@	"dependencies":[{"ref":"./http_echo"}, {"ref":"data/long_text.txt", "origin":"project"}]
 #@	}
 
 import sys
@@ -117,6 +117,7 @@ class run_params:
 	def __init__(self, args):
 		self.executable = args['build_info']['target_dir'] + '/bin/http_echo'
 		self.target = args['targets'][0]
+		self.source_dir = args['build_info']['source_dir']
 	
 def init_test_suite(args):
 	pytest.testsuite_args = run_params(args)
@@ -204,11 +205,56 @@ def test_read_response_without_request():
 			os.waitpid(pid, 0)
 
 	with_server(pytest.testsuite_args.executable, handler)
+	
+def test_process_large_amount_of_data(server):
+	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+		print(pytest.testsuite_args.source_dir + '/data/long_text.txt')
+		with open(pytest.testsuite_args.source_dir + '/data/long_text.txt') as f:
+			data = f.read()
+
+		request = (''.join([('''GET / HTTP/1.1
+Content-Length: %d
+
+'''%len(data)).replace('\n', '\r\n'), data])).encode()
+		bytes_left = len(request)
+		bytes_written = 0
+		while bytes_left > 0:
+			bytes_to_write = min(bytes_left, 256*1024)
+			bytes_sent = connection.send(request[bytes_written: bytes_written + bytes_to_write])
+			assert bytes_sent != 0
+			bytes_left = bytes_left - bytes_sent
+			bytes_written = bytes_written + bytes_sent
+			time.sleep(2.0)
+		
+		response = ''.join([('''HTTP/1.1 200 Ok
+Content-Length: %d
+Content-Type: text/plain
+
+'''%len(request)).replace('\n', '\r\n'),
+		request.decode()])
+		print('response %d, request %d'%(len(response), len(request)), file=sys.stderr)
+		
+		print('Waiting for data', file=sys.stderr)
+		time.sleep(1.0)
+		print('Start reading', file=sys.stderr)
+		bytes_left = len(response)
+		resp_recv = []
+		while bytes_left > 0:
+			bytes_to_read = min(bytes_left, 4096)
+			data = connection.recv(bytes_to_read)
+			bytes_left = bytes_left - len(data)
+			resp_recv.append(data)
+		resp_recv = b''.join(resp_recv)
+		assert resp_recv.decode() == response
+
+	print('Client closed connection', file=sys.stderr)
+		#	time.sleep(1.0/128.0)
+	
 
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
-		return pytest.main(['--verbose',  __file__])
+		return pytest.main(['-s', '--verbose',  '-k', 'test_process_large_amount_of_data', __file__])
 	
 if __name__ == '__main__':
 	exit(main(sys.argv))
