@@ -208,7 +208,6 @@ def test_read_response_without_request():
 
 def test_process_large_amount_of_data(server):
 	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
-		print(pytest.testsuite_args.source_dir + '/integration_test/long_text.txt')
 		with open(pytest.testsuite_args.source_dir + '/integration_test/long_text.txt') as f:
 			data = f.read()
 
@@ -242,6 +241,20 @@ Content-Type: text/plain
 			resp_recv.append(data)
 		resp_recv = b''.join(resp_recv)
 		assert resp_recv.decode() == response
+
+def test_process_bad_request_bad_proto_version(server):
+		with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+			with connection.makefile('rwb') as connfile:
+				connfile.write(str.encode('''GET / HTTP/1.2
+
+'''.replace('\n', '\r\n')))
+				connfile.flush()
+				res = connfile.read()
+				assert res.decode()== '''HTTP/1.1 505 Http version not supported
+Content-Length: 46
+Content-Type: text/plain
+
+This web server only supports HTTP version 1.1'''.replace('\n', '\r\n')
 
 def main(argv):
 	if sys.argv[1] == 'compile':

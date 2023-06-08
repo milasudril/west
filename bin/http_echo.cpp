@@ -82,7 +82,7 @@ namespace
 		{
 			fprintf(stderr, "Finalize read request header\n");
 			fflush(stderr);
-			
+
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
 			validation_result.error_message = nullptr;
@@ -108,10 +108,10 @@ namespace
 		{
 			fprintf(stderr, "Finalize read request body\n");
 			fflush(stderr);
-			
+
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)))
 				.append("Content-Type", "text/plain");
-				
+
 			m_read_offset = std::begin(m_response_body);
 
 			west::http::finalize_state_result validation_result;
@@ -124,18 +124,19 @@ namespace
 		{
 			fprintf(stderr, "Finalize for error state\n");
 			fflush(stderr);
-			
+
 			m_error_message = std::move(res.error_message);
 			m_response_body = std::string{m_error_message.get()};
 			m_read_offset = std::begin(m_response_body);
-			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
+			fields.append("Content-Length", std::to_string(std::size(m_response_body)))
+				.append("Content-Type", "text/plain");;
 		}
 
 		auto process_request_content(std::span<char const> buffer)
 		{
 			fprintf(stderr, "Reading request content\n");
 			fflush(stderr);
-			
+
 			m_response_body.insert(std::end(m_response_body), std::begin(buffer), std::end(buffer));
 			return request_handler_write_result{
 				.bytes_written = std::size(buffer),
@@ -147,7 +148,7 @@ namespace
 		{
 			fprintf(stderr, "Writing response body\n");
 			fflush(stderr);
-			
+
 			auto const n_bytes_left = static_cast<size_t>(std::end(m_response_body) - m_read_offset);
 			auto const bytes_to_read = std::min(std::size(buffer), n_bytes_left);
 			std::copy_n(m_read_offset, bytes_to_read, std::begin(buffer));
@@ -163,19 +164,19 @@ namespace
 		std::unique_ptr<char[]> m_error_message;
 		std::string m_response_body;
 		std::string::iterator m_read_offset;
-	};	
-	
+	};
+
 	enum class adm_session_status{keep_connection, close_connection};
-	
+
 	constexpr bool is_session_terminated(adm_session_status status)
 	{ return status == adm_session_status::close_connection; }
-	
+
 	template<class CallbackRegistry>
 	struct adm_request_handler
-	{		
+	{
 		west::io::inet_connection connection;
 		CallbackRegistry registry;
-		
+
 		auto socket_is_ready()
 		{
 			std::array<char, 65536> read_buffer{};
@@ -197,7 +198,7 @@ namespace
 				if(std::string_view{std::data(read_buffer), res.bytes_read} == "shutdown")
 				{ registry.clear(); }
 			}
-			
+
 			return adm_session_status::keep_connection;
 		}
 	};
@@ -239,7 +240,7 @@ int main()
 		adm.port()
 	);
 	fflush(stdout);
-	
+
 	west::service_registry services{};
 	enroll_http_service<echo_http_request>(services, std::move(http))
 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
