@@ -19,7 +19,7 @@ namespace west::io
 		write_is_possible = EPOLLOUT,
 		readwrite_is_possible = EPOLLIN|EPOLLOUT
 	};
-	
+
 	template<class FdCallbackRegistry>
 	class fd_callback_registry_ref
 	{
@@ -27,7 +27,7 @@ namespace west::io
 		explicit fd_callback_registry_ref(FdCallbackRegistry& registry):
 			m_registry{registry}
 		{}
-		
+
 		template<class T>
 		fd_callback_registry_ref& add(fd_ref fd, T&& l, listen_on events = listen_on::readwrite_is_possible)
 		{
@@ -40,10 +40,10 @@ namespace west::io
 
 		void remove(fd_ref fd)
 		{ m_registry.get().deferred_remove(fd);}
-		
+
 		void clear()
 		{ m_registry.get().deferred_clear(); }
-		
+
 	private:
 		std::reference_wrapper<FdCallbackRegistry> m_registry;
 	};
@@ -56,13 +56,13 @@ namespace west::io
 			type_erased_ptr object;
 			void (*callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
 		};
-		
+
 		fd_event_monitor():m_fd{epoll_create1(0)},m_reg_should_be_cleared{false}
 		{
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create epoll instance", errno}; }
 		}
-		
+
 		auto fd_callback_registry()
 		{ return fd_callback_registry_ref{*this}; }
 
@@ -89,14 +89,6 @@ namespace west::io
 			flush_fds_to_remove();
 			return true;
 		}
-		
-		template<class FdEventListener>
-		fd_event_monitor& add_input(fd_ref fd, FdEventListener&& l)
-		{ return add(fd, std::forward<FdEventListener>(l), EPOLLIN); }
-		
-		template<class FdEventListener>
-		fd_event_monitor& add_output(fd_ref fd, FdEventListener&& l)
-		{ return add(fd, std::forward<FdEventListener>(l), EPOLLOUT); }
 
 		template<class FdEventListener>
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, listen_on events = listen_on::readwrite_is_possible)
@@ -140,13 +132,13 @@ namespace west::io
 			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_MOD, fd, &event) == -1)
 			{ throw system_error{"Failed to modify event listener", errno}; }
 		}
-		
+
 		void deferred_remove(fd_ref fd)
 		{ m_fds_to_remove.push_back(fd); }
-		
+
 		void deferred_clear()
 		{ m_reg_should_be_cleared = true; }
-		
+
 		void flush_fds_to_remove()
 		{
 			if(m_reg_should_be_cleared)
@@ -154,10 +146,10 @@ namespace west::io
 			else
 			{
 				for(auto fd : m_fds_to_remove)
-				{ 
+				{
 					epoll_event event{};
 					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd , &event);
-					m_listeners.erase(fd); 
+					m_listeners.erase(fd);
 				}
 
 				m_fds_to_remove.clear();
