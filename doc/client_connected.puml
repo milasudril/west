@@ -1,0 +1,5 @@
+@startuml
+autoactivate on
+west -> application:create_request_handler(args...)
+return
+@enduml

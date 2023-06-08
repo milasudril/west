@@ -6,5 +6,9 @@ application -> west:create_service_registry()
 return
 application -> west:enroll_http_service<RequestHandler>(service_registry, server_socket, request_handler_args...)
 return
-application -> west:process_events()
+loop for other services
+	application -> service_registry:enroll(socket, session_factory)
+	return
+end
+application -> service_registry:process_events()
 @enduml
