@@ -254,7 +254,7 @@ Content-Type: text/plain
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
-		return pytest.main(['-s', '--verbose',  '-k', 'test_process_large_amount_of_data', __file__])
+		return pytest.main(['-s', '--verbose', __file__])
 
 if __name__ == '__main__':
 	exit(main(sys.argv))
