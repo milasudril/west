@@ -232,11 +232,7 @@ Content-Type: text/plain
 
 '''%len(request)).replace('\n', '\r\n'),
 		request.decode()])
-		print('response %d, request %d'%(len(response), len(request)), file=sys.stderr)
-
-		print('Waiting for data', file=sys.stderr)
 		time.sleep(1.0)
-		print('Start reading', file=sys.stderr)
 		bytes_left = len(response)
 		resp_recv = []
 		while bytes_left > 0:
@@ -246,10 +242,6 @@ Content-Type: text/plain
 			resp_recv.append(data)
 		resp_recv = b''.join(resp_recv)
 		assert resp_recv.decode() == response
-
-	print('Client closed connection', file=sys.stderr)
-		#	time.sleep(1.0/128.0)
-
 
 def main(argv):
 	if sys.argv[1] == 'compile':
