@@ -1,7 +1,5 @@
 @startuml
 autoactivate on
-west -> west:connection_accepted
-return
 == Read request header ==
 west -> request_handler:finalize_state(request_header)
 return validation_result
@@ -30,7 +28,4 @@ loop while data available and operation succeeded
 	return read_result
 end
 == Wait for data ==
-west -> west:connection_closed
-return
-destroy request_handler
 @enduml

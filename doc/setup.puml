@@ -1,0 +1,10 @@
+@startuml
+autoactivate on
+application -> west:create_inet_server_socket(client_address, port_range)
+return
+application -> west:create_service_registry()
+return
+application -> west:enroll_http_service<RequestHandler>(service_registry, server_socket, request_handler_args...)
+return
+application -> west:process_events()
+@enduml
