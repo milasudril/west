@@ -242,6 +242,10 @@ Content-Type: text/plain
 		resp_recv = b''.join(resp_recv)
 		assert resp_recv.decode() == response
 
+		cpu_usage = get_cpu_usage(server.pid)
+		assert cpu_usage < 0.5
+
+
 def test_process_bad_request_bad_proto_version(server):
 		with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
 			with connection.makefile('rwb') as connfile:
@@ -255,6 +259,9 @@ Content-Length: 46
 Content-Type: text/plain
 
 This web server only supports HTTP version 1.1'''.replace('\n', '\r\n')
+
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
 
 def main(argv):
 	if sys.argv[1] == 'compile':
