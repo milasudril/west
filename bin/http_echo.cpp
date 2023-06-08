@@ -10,7 +10,7 @@
 
 namespace
 {
-	enum class request_handler_error_code{no_error, would_block, error};
+	enum class request_handler_error_code{no_error};
 
 	struct read_result
 	{
@@ -24,10 +24,6 @@ namespace
 		{
 			case request_handler_error_code::no_error:
 				return true;
-			case request_handler_error_code::would_block:
-				return true;
-			case request_handler_error_code::error:
-				return false;
 			default:
 				__builtin_unreachable();
 		}
@@ -39,10 +35,6 @@ namespace
 		{
 			case request_handler_error_code::no_error:
 				return false;
-			case request_handler_error_code::would_block:
-				return false;
-			case request_handler_error_code::error:
-				return true;
 			default:
 				__builtin_unreachable();
 		}
@@ -54,10 +46,6 @@ namespace
 		{
 			case request_handler_error_code::no_error:
 				return "No error";
-			case request_handler_error_code::would_block:
-				return "Would block";
-			case request_handler_error_code::error:
-				return "Error";
 			default:
 				__builtin_unreachable();
 		}
