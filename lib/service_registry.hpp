@@ -45,15 +45,15 @@ namespace west
 			using type = std::remove_cvref_t<decltype(std::declval<Socket>().accept())>;
 		};
 	}
-	
+
 	template<class T>
 	struct session_state_mapper;
-	
+
 	template<class EventMonitor, server_socket ServerSocket,
 		session_factory<typename detail::connection_type<ServerSocket>::type> SessionFactory>
 	void accept_connection(
 		EventMonitor event_monitor,
-		ServerSocket& server_socket, 
+		ServerSocket& server_socket,
 		SessionFactory& session_factory)
 	{
 		auto connection = server_socket.accept();
@@ -69,7 +69,7 @@ namespace west
 					event_monitor.remove(fd);
 					return;
 				}
-				
+
 				if(auto new_events = session_state_mapper<std::remove_cvref_t<decltype(result)>>{}(result); new_events != events)
 				{
 					event_monitor.modify(fd, new_events);
@@ -79,7 +79,7 @@ namespace west
 			io::listen_on::read_is_possible
 		);
 	}
-	
+
 	class service_registry
 	{
 	public:
@@ -98,16 +98,16 @@ namespace west
 				});
 			return *this;
 		}
-		
+
 		service_registry& process_events()
 		{
 			while(m_event_monitor.wait_for_and_dispatch_events());
 			return *this;
 		}
-		
+
 		auto fd_callback_registry()
 		{ return m_event_monitor.fd_callback_registry(); }
-	
+
 	private:
 		io::fd_event_monitor m_event_monitor;
 	};

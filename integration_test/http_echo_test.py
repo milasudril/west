@@ -2,7 +2,7 @@
 
 #@	{
 #@	"target":{"name":"http_echo_test_result.txt"},
-#@	"dependencies":[{"ref":"./http_echo"}, {"ref":"data/long_text.txt", "origin":"project"}]
+#@	"dependencies":[{"ref":"bin/http_echo"}, {"ref":"./long_text.txt", "origin":"project"}]
 #@	}
 
 import sys
@@ -112,13 +112,13 @@ def get_ports(text_src):
 def talk_adm(port):
 	with socket.create_connection(('127.0.0.1', port)) as connection:
 		connection.sendall(str.encode('shutdown'))
-		
+
 class run_params:
 	def __init__(self, args):
 		self.executable = args['build_info']['target_dir'] + '/bin/http_echo'
 		self.target = args['targets'][0]
 		self.source_dir = args['build_info']['source_dir']
-	
+
 def init_test_suite(args):
 	pytest.testsuite_args = run_params(args)
 
@@ -170,7 +170,7 @@ def test_process_two_requests_read_response_after_sending_reqs(server):
 				response = item['response']
 				result = connfile.read(len(response))
 				assert response == result.decode()
-			
+
 			cpu_usage = get_cpu_usage(server.pid)
 			assert cpu_usage < 0.5
 
@@ -205,11 +205,11 @@ def test_read_response_without_request():
 			os.waitpid(pid, 0)
 
 	with_server(pytest.testsuite_args.executable, handler)
-	
+
 def test_process_large_amount_of_data(server):
 	with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
-		print(pytest.testsuite_args.source_dir + '/data/long_text.txt')
-		with open(pytest.testsuite_args.source_dir + '/data/long_text.txt') as f:
+		print(pytest.testsuite_args.source_dir + '/integration_test/long_text.txt')
+		with open(pytest.testsuite_args.source_dir + '/integration_test/long_text.txt') as f:
 			data = f.read()
 
 		request = (''.join([('''GET / HTTP/1.1
@@ -225,7 +225,7 @@ Content-Length: %d
 			bytes_left = bytes_left - bytes_sent
 			bytes_written = bytes_written + bytes_sent
 			time.sleep(2.0)
-		
+
 		response = ''.join([('''HTTP/1.1 200 Ok
 Content-Length: %d
 Content-Type: text/plain
@@ -233,7 +233,7 @@ Content-Type: text/plain
 '''%len(request)).replace('\n', '\r\n'),
 		request.decode()])
 		print('response %d, request %d'%(len(response), len(request)), file=sys.stderr)
-		
+
 		print('Waiting for data', file=sys.stderr)
 		time.sleep(1.0)
 		print('Start reading', file=sys.stderr)
@@ -249,13 +249,13 @@ Content-Type: text/plain
 
 	print('Client closed connection', file=sys.stderr)
 		#	time.sleep(1.0/128.0)
-	
+
 
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
 		return pytest.main(['-s', '--verbose',  '-k', 'test_process_large_amount_of_data', __file__])
-	
+
 if __name__ == '__main__':
 	exit(main(sys.argv))
-	
+
