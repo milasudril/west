@@ -92,11 +92,6 @@ namespace west::io
 		return static_cast<uint16_t>(*i);
 	}
 
-	struct inet_connection_opts
-	{
-		std::optional<int> send_size;
-	};
-
 	class inet_connection
 	{
 	public:
@@ -115,17 +110,6 @@ namespace west::io
 
 		void set_non_blocking()
 		{ io::set_non_blocking(m_fd.get()); }
-
-		void set_options(inet_connection_opts const& opts)
-		{
-			if(opts.send_size.has_value())
-			{
-				int send_size = *opts.send_size;
-				auto res = setsockopt(m_fd.get(), SOL_SOCKET, SO_SNDBUF, &send_size, sizeof(send_size));
-				if(res == -1)
-				{ throw system_error{"Failed to set SO_SNDBUF", errno}; }
-			}
-		}
 
 		[[nodiscard]] read_result read(std::span<char> buffer)
 		{
@@ -201,8 +185,10 @@ namespace west::io
 	public:
 		explicit inet_server_socket(inet_address client_address,
 			std::ranges::iota_view<int, int> ports_to_try,
-			int listen_backlock):
-			m_fd{create_socket(AF_INET, SOCK_STREAM, 0)}
+			int listen_backlock,
+			std::optional<int> conn_send_size = {}):
+			m_fd{create_socket(AF_INET, SOCK_STREAM, 0)},
+			m_conn_send_size{conn_send_size}
 		{
 			m_port = bind(m_fd.get(), client_address, ports_to_try);
 
@@ -221,6 +207,14 @@ namespace west::io
 			if(fd.get() == nullptr)
 			{ throw system_error{"Failed to establish a connection", errno}; }
 
+			if(m_conn_send_size.has_value())
+			{
+				int send_size = *m_conn_send_size;
+				auto res = setsockopt(fd.get(), SOL_SOCKET, SO_SNDBUF, &send_size, sizeof(send_size));
+				if(res == -1)
+				{ throw system_error{"Failed to set SO_SNDBUF", errno}; }
+			}
+
 			return inet_connection{
 				std::move(fd),
 				inet_address{client_addr.sin_addr},
@@ -237,6 +231,7 @@ namespace west::io
 	private:
 		fd_owner m_fd;
 		uint16_t m_port;
+		std::optional<int> m_conn_send_size;
 	};
 }
 

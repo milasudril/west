@@ -27,23 +27,10 @@ namespace west
 	template<class RequestHandler, class... SessionArgs>
 	auto& enroll_http_service(service_registry& registry,
 		io::inet_server_socket&& server,
-		io::inet_connection_opts&& connection_opts,
 		SessionArgs&&... session_args)
 	{
 		return registry.enroll(std::move(server),
-			std::move(connection_opts),
 			http::session_factory<RequestHandler>{},
-			std::forward<SessionArgs>(session_args)...);
-	}
-
-	template<class RequestHandler, class... SessionArgs>
-	auto& enroll_http_service(service_registry& registry,
-		io::inet_server_socket&& server,
-		SessionArgs&&... session_args)
-	{
-		return enroll_http_service<RequestHandler>(registry,
-			std::move(server),
-			io::inet_connection_opts{},
 			std::forward<SessionArgs>(session_args)...);
 	}
 }

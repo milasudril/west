@@ -214,7 +214,8 @@ int main()
 	west::io::inet_server_socket http{
 		address,
 		std::ranges::iota_view{49152, 65536},
-		128
+		128,
+		1024
 	};
 	west::io::inet_server_socket adm{
 		address,
@@ -230,11 +231,7 @@ int main()
 	fflush(stdout);
 
 	west::service_registry services{};
-	enroll_http_service<echo_http_request>(services,
-		std::move(http),
-		west::io::inet_connection_opts{
-			.send_size = 2048  // Set a small send size in order to facilitate testing
-		})
- 		.enroll(std::move(adm), west::io::inet_connection_opts{}, adm_session_factory{services.fd_callback_registry()})
+	enroll_http_service<echo_http_request>(services, std::move(http))
+ 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }
