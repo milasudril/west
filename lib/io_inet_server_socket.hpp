@@ -45,11 +45,11 @@ namespace west::io
 		inet_ntop(AF_INET, &val, std::data(buffer), 16);
 		return std::string{std::data(buffer)};
 	}
-	
+
 	[[nodiscard]] inline auto connect_to(inet_address address, uint16_t port)
 	{
 		auto socket = create_socket(AF_INET, SOCK_STREAM, 0);
-		
+
 		sockaddr_in addr{};
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(port);
@@ -58,13 +58,13 @@ namespace west::io
 		auto const res = ::connect(socket.get(),
 			reinterpret_cast<sockaddr const*>(&addr),
 			sizeof(addr));
-		
+
 		if(res == -1)
 		{ throw system_error{"Failed to connect to server", errno};}
-		
+
 		return socket;
 	}
-	
+
 
 	[[nodiscard]] inline auto try_bind(fd_ref socket, inet_address client_address, uint16_t port)
 	{
@@ -92,6 +92,11 @@ namespace west::io
 		return static_cast<uint16_t>(*i);
 	}
 
+	struct inet_connection_opts
+	{
+		std::optional<int> send_size;
+	};
+
 	class inet_connection
 	{
 	public:
@@ -100,12 +105,7 @@ namespace west::io
 			m_remote_address{remote_address},
 			m_remote_port{remote_port},
 			m_read_disabled{false}
-		{ 
-			int send_size = 2048;
-			auto res = setsockopt(m_fd.get(), SOL_SOCKET, SO_SNDBUF, &send_size, sizeof(send_size));
-			if(res == -1)
-			{ throw system_error{"Failed to set SO_SNDBUF", errno}; }
-		}
+		{ }
 
 		[[nodiscard]] auto remote_port() const
 		{ return m_remote_port; }
@@ -116,6 +116,17 @@ namespace west::io
 		void set_non_blocking()
 		{ io::set_non_blocking(m_fd.get()); }
 
+		void set_options(inet_connection_opts const& opts)
+		{
+			if(opts.send_size.has_value())
+			{
+				int send_size = *opts.send_size;
+				auto res = setsockopt(m_fd.get(), SOL_SOCKET, SO_SNDBUF, &send_size, sizeof(send_size));
+				if(res == -1)
+				{ throw system_error{"Failed to set SO_SNDBUF", errno}; }
+			}
+		}
+
 		[[nodiscard]] read_result read(std::span<char> buffer)
 		{
 			if(m_read_disabled)
@@ -125,7 +136,7 @@ namespace west::io
 					.ec = operation_result::completed
 				};
 			}
-			
+
 			auto res = ::read(m_fd.get(), std::data(buffer), std::size(buffer));
 			if(res == -1)
 			{
@@ -136,7 +147,7 @@ namespace west::io
 						operation_result::error
 				};
 			}
-			
+
 			fprintf(stderr, "Read %zu of %zu bytes from socket\n", static_cast<size_t>(res), std::size(buffer));
 			fflush(stderr);
 
@@ -170,11 +181,11 @@ namespace west::io
 		}
 
 		void stop_reading()
-		{ 
+		{
 			::shutdown(m_fd.get(), SHUT_RD);
 			m_read_disabled = true;
 		}
-		
+
 		[[nodiscard]] fd_ref fd() const
 		{ return m_fd.get(); }
 
@@ -219,7 +230,7 @@ namespace west::io
 
 		[[nodiscard]] uint16_t port() const
 		{ return m_port; }
-		
+
 		[[nodiscard]] fd_ref fd() const
 		{ return m_fd.get(); }
 
