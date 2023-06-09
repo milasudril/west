@@ -232,7 +232,7 @@ int main()
 	west::service_registry services{};
 	enroll_http_service<echo_http_request>(services,
 		std::move(http),
-			west::io::inet_connection_opts{
+		west::io::inet_connection_opts{
 			.send_size = 2048  // Set a small send size in order to facilitate testing
 		})
  		.enroll(std::move(adm), west::io::inet_connection_opts{}, adm_session_factory{services.fd_callback_registry()})
