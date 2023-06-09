@@ -9,7 +9,7 @@ template<>
 struct west::session_state_mapper<west::http::process_request_result>
 {
 	constexpr auto operator()(http::process_request_result res) const
-	{ 
+	{
 		switch(res.io_dir)
 		{
 			case http::session_state_io_direction::input:
@@ -24,13 +24,14 @@ struct west::session_state_mapper<west::http::process_request_result>
 
 namespace west
 {
-	template<class RequestHandler, class ... Args>
+	template<class RequestHandler, class... SessionArgs>
 	auto& enroll_http_service(service_registry& registry,
 		io::inet_server_socket&& server,
-		Args&& ... session_factory_args)
+		SessionArgs&&... session_args)
 	{
 		return registry.enroll(std::move(server),
-			http::session_factory<RequestHandler>{std::forward<Args>(session_factory_args)...});
+			http::session_factory<RequestHandler>{},
+			std::forward<SessionArgs>(session_args)...);
 	}
 }
 

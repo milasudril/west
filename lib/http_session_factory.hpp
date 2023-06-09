@@ -8,9 +8,14 @@ namespace west::http
 	template<request_handler RequestHandler>
 	struct session_factory
 	{
-		template<io::socket Socket>
-		auto create_session(Socket&& socket)
-		{ return request_processor{std::forward<Socket>(socket), RequestHandler{}}; }
+		template<io::socket Socket, class... SessionArgs>
+		auto create_session(Socket&& socket, SessionArgs&&... session_args)
+		{
+			return request_processor{
+				std::forward<Socket>(socket),
+				RequestHandler{std::forward<SessionArgs>(session_args)...}
+			};
+		}
 	};
 }
 

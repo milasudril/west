@@ -231,6 +231,6 @@ int main()
 
 	west::service_registry services{};
 	enroll_http_service<echo_http_request>(services, std::move(http))
-		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
+ 		.enroll(std::move(adm), adm_session_factory{services.fd_callback_registry()})
 		.process_events();
 }
