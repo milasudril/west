@@ -7,11 +7,14 @@
 namespace west::http
 {
 	enum class request_processor_status{completed, more_data_needed, application_error, io_error};
-	
+
 	struct process_request_result
 	{
 		request_processor_status status;
 		session_state_io_direction io_dir;
+
+		constexpr bool operator==(process_request_result const&) const = default;
+		constexpr bool operator!=(process_request_result const&) const = default;
 	};
 
 	template<io::socket Socket, request_handler RequestHandler>
@@ -102,14 +105,14 @@ namespace west::http
 		using buffer_span = io_adapter::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
 		std::array<buffer_span, 2> m_buff_spans;
 	};
-	
+
 	constexpr bool is_session_terminated(request_processor_status status)
 	{
-		return status == request_processor_status::io_error 
+		return status == request_processor_status::io_error
 			|| status == request_processor_status::application_error
 			|| status == request_processor_status::completed;
 	}
-	
+
 	constexpr bool is_session_terminated(process_request_result res)
 	{ return is_session_terminated(res.status); }
 }

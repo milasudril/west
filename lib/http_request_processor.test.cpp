@@ -1,4 +1,4 @@
-//	{"target":{"name":"http_request_processor.test"}}
+//@	{"target":{"name":"http_request_processor.test"}}
 
 #include "./http_request_processor.hpp"
 
@@ -314,7 +314,10 @@ TESTCASE(west_http_request_processor_process_socket_initial_io_error)
 	west::http::request_processor proc{socket{}, request_handler{""}};
 	proc.session().connection.enable_read_error();
 	auto const res = proc.socket_is_ready();
-	EXPECT_EQ(res, west::http::request_processor_status::io_error);
+	EXPECT_EQ(res, (west::http::process_request_result{
+		.status = west::http::request_processor_status::io_error,
+		.io_dir = west::http::session_state_io_direction::input
+	}));
 }
 
 TESTCASE(west_http_request_processor_process_socket_connection_closed_early_write_no_response_body)
@@ -326,7 +329,10 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 	west::http::request_processor proc{socket{}, request_handler{""}};
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
-	EXPECT_EQ(res, west::http::request_processor_status::completed);
+	EXPECT_EQ(res, (west::http::process_request_result{
+		.status = west::http::request_processor_status::completed,
+		.io_dir = west::http::session_state_io_direction::input
+	}));
 	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
 	"Content-Length: 16\r\n"
 "\r\n"
@@ -342,7 +348,10 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_early_writ
 	west::http::request_processor proc{socket{}, request_handler{"This is a test"}};
 	proc.session().connection.client_stop_write();
 	auto const res = proc.socket_is_ready();
-	EXPECT_EQ(res, west::http::request_processor_status::completed);
+	EXPECT_EQ(res, (west::http::process_request_result{
+		.status = west::http::request_processor_status::completed,
+		.io_dir = west::http::session_state_io_direction::input
+	}));
 	EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
 	"Content-Length: 16\r\n"
 "\r\n"
@@ -367,7 +376,11 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_while_read
 	proc.session().connection.read_blocks(2);
 	{
 		auto const res = proc.socket_is_ready();
-		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(res, (west::http::process_request_result{
+		.status = west::http::request_processor_status::more_data_needed,
+		.io_dir = west::http::session_state_io_direction::input
+		}));
+
 		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
 	}
 
@@ -375,7 +388,10 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_while_read
 
 	{
 		auto const res = proc.socket_is_ready();
-		EXPECT_EQ(res, west::http::request_processor_status::completed);
+		EXPECT_EQ(res, (west::http::process_request_result{
+			.status = west::http::request_processor_status::completed,
+			.io_dir = west::http::session_state_io_direction::input
+		}));
 		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
 		EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
 "Content-Length: 16\r\n"
@@ -402,13 +418,19 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_while_read
 	proc.session().connection.read_blocks(8);
 	{
 		auto const res = proc.socket_is_ready();
-		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(res, (west::http::process_request_result{
+			.status = west::http::request_processor_status::more_data_needed,
+			.io_dir = west::http::session_state_io_direction::input
+		}));
 		EXPECT_EQ(proc.session().request_handler.request().empty(), true);
 	}
 
 	{
 		auto const res = proc.socket_is_ready();
-		EXPECT_EQ(res, west::http::request_processor_status::more_data_needed);
+		EXPECT_EQ(res, (west::http::process_request_result{
+			.status = west::http::request_processor_status::more_data_needed,
+			.io_dir = west::http::session_state_io_direction::input
+		}));
 		EXPECT_EQ(proc.session().request_handler.request(),
 			"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit sollicit");
 	}
@@ -416,7 +438,10 @@ TESTCASE(west_http_request_processor_process_socket_connection_closed_while_read
 	proc.session().connection.client_stop_write();
 	{
 		auto const res = proc.socket_is_ready();
-		EXPECT_EQ(res, west::http::request_processor_status::completed);
+		EXPECT_EQ(res, (west::http::process_request_result{
+			.status = west::http::request_processor_status::completed,
+			.io_dir = west::http::session_state_io_direction::input
+		}));
 		EXPECT_EQ(proc.session().request_handler.request(),
 			"Sed malesuada luctus velit nec consequat. Mauris congue aliquet tellus, tempus aliquam elit sollicit");
 		EXPECT_EQ(proc.session().connection.output(), "HTTP/1.1 400 Bad request\r\n"
@@ -437,9 +462,12 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_fwk)
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::completed,
+				.io_dir = west::http::session_state_io_direction::input
+			}));
 			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 505 Http version not supported\r\n"
@@ -449,9 +477,7 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_fwk)
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
 
@@ -467,9 +493,12 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_no
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::completed,
+				.io_dir = west::http::session_state_io_direction::input
+			}));
 			EXPECT_EQ(proc.session().connection.server_read_closed(), true);
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 400 Bad request\r\n"
@@ -479,9 +508,7 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_content_length_no
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
 
@@ -497,9 +524,12 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_1)
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::completed,
+				.io_dir = west::http::session_state_io_direction::input
+			}));
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 418 I am a teapot\r\n"
 "Content-Length: 69\r\n"
@@ -509,9 +539,7 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_1)
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
 
@@ -527,9 +555,12 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_2)
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::completed,
+				.io_dir = west::http::session_state_io_direction::input
+			}));
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 422 Unprocessable content\r\n"
 "Content-Length: 70\r\n"
@@ -539,9 +570,7 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_rej_by_app_2)
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
 
@@ -557,9 +586,12 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_fail_writing_resp
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::application_error);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::application_error,
+				.io_dir = west::http::session_state_io_direction::output
+			}));
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 200 Ok\r\n"
 "Content-Length: 12\r\n"
@@ -568,9 +600,7 @@ TESTCASE(west_http_request_processor_process_socket_bad_header_fail_writing_resp
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
 
@@ -595,9 +625,12 @@ TESTCASE(west_http_request_processor_process_socket_valid_request_with_response)
 	while(true)
 	{
 		auto const res = proc.socket_is_ready();
-		if(res != west::http::request_processor_status::more_data_needed)
+		if(res.status != west::http::request_processor_status::more_data_needed)
 		{
-			EXPECT_EQ(res, west::http::request_processor_status::completed);
+			EXPECT_EQ(res, (west::http::process_request_result{
+				.status = west::http::request_processor_status::completed,
+				.io_dir = west::http::session_state_io_direction::input
+			}));
 			EXPECT_EQ(proc.session().connection.output(),
 "HTTP/1.1 200 Ok\r\n"
 "Content-Length: 469\r\n"
@@ -611,8 +644,6 @@ TESTCASE(west_http_request_processor_process_socket_valid_request_with_response)
 			break;
 		}
 		else
-		{
-			EXPECT_EQ(proc.session().connection.server_read_closed(), false);
-		}
+		{ EXPECT_EQ(proc.session().connection.server_read_closed(), false); }
 	}
 }
