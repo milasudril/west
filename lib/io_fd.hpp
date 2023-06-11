@@ -17,7 +17,11 @@ namespace west::io
 	struct fd_ref
 	{
 		fd_ref():value{-1}{}
-		fd_ref(int val) : value{val} {}
+
+		template<class T>
+		requires std::is_same_v<T, int>
+		fd_ref(T val) : value{val} {}
+
 		fd_ref(std::nullptr_t) : value{-1} {}
 
 		operator int() const {return value;}
@@ -82,7 +86,7 @@ namespace west::io
 	}
 
 	inline void set_non_blocking(fd_ref fd)
-	{ 
+	{
 		if(::fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 		{ throw system_error{"Failed to enable nonblocking mode", errno};}
 	}

@@ -113,7 +113,7 @@ namespace west::io
 			if(::epoll_ctl(m_fd.get(), EPOLL_CTL_ADD, fd, &event) == -1)
 			{
 				auto const saved_errno = errno;
-				m_listeners.erase(i.second);
+				m_listeners.erase(i.first);
 				throw system_error{"Failed to add event listener for file descriptor", saved_errno};
 			}
 
