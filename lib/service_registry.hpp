@@ -37,6 +37,9 @@ namespace west
 		{ x.create_session(std::forward<U>(y), args...) } -> session;
 	};
 
+	template<class T>
+	struct session_state_mapper;
+
 	namespace detail
 	{
 		template<server_socket Socket>
@@ -46,8 +49,33 @@ namespace west
 		};
 	}
 
-	template<class T>
-	struct session_state_mapper;
+	template<class Session>
+	struct connection_event_handler
+	{
+		Session session;
+		io::listen_on events;
+
+		void fd_is_ready(auto event_monitor, io::fd_ref fd)
+		{
+			auto result = session.socket_is_ready();
+			if(is_session_terminated(result)) [[unlikely]]
+			{
+				event_monitor.remove(fd);
+				return;
+			}
+
+			if(auto new_events = session_state_mapper<std::remove_cvref_t<decltype(result)>>{}(result);
+				new_events != events)
+			{
+				event_monitor.modify(fd, new_events);
+				events = new_events;
+			}
+		}
+
+		void fd_is_idle(auto, io::fd_ref)
+		{}
+	};
+
 
 	template<class EventMonitor, server_socket ServerSocket, class SessionFactory, class... SessionArgs>
 		requires session_factory<SessionFactory, typename detail::connection_type<ServerSocket>::type, SessionArgs...>
@@ -61,25 +89,31 @@ namespace west
 		connection.set_non_blocking();
 		auto const conn_fd = connection.fd();
 		event_monitor.add(conn_fd,
-			[session = session_factory.create_session(std::move(connection), std::forward<SessionArgs>(session_args)...),
-			 events = io::listen_on::read_is_possible]
-			(auto event_monitor, io::fd_ref fd) mutable {
-				auto result = session.socket_is_ready();
-				if(is_session_terminated(result)) [[unlikely]]
-				{
-					event_monitor.remove(fd);
-					return;
-				}
-
-				if(auto new_events = session_state_mapper<std::remove_cvref_t<decltype(result)>>{}(result); new_events != events)
-				{
-					event_monitor.modify(fd, new_events);
-					events = new_events;
-				}
+			connection_event_handler{
+				session_factory.create_session(std::move(connection), std::forward<SessionArgs>(session_args)...),
+				io::listen_on::read_is_possible
 			},
 			io::listen_on::read_is_possible
 		);
 	}
+
+	template<server_socket ServerSocket, class SessionFactory, class... SessionArgs>
+	struct server_event_handler
+	{
+		ServerSocket server_socket;
+		SessionFactory session_factory;
+		std::tuple<SessionArgs...>  session_args;
+
+		void fd_is_ready(auto event_monitor, io::fd_ref)
+		{
+			std::apply([this, event_monitor](auto... session_args){
+				accept_connection(event_monitor, server_socket, session_factory, session_args...);
+			}, session_args);
+		}
+
+		void fd_is_idle(auto, io::fd_ref)
+		{}
+	};
 
 	class service_registry
 	{
@@ -93,12 +127,12 @@ namespace west
 			server_socket.set_non_blocking();
 			auto const server_socket_fd = server_socket.fd();
 			m_event_monitor.add(server_socket_fd,
-				[server_socket = std::forward<ServerSocket>(server_socket),
-					session_factory = std::forward<SessionFactory>(session_factory),
-					... session_args = std::forward<SessionArgs>(session_args)
-				](auto event_monitor, io::fd_ref) mutable {
-					accept_connection(event_monitor, server_socket, session_factory, session_args...);
-				});
+				server_event_handler{
+					std::forward<ServerSocket>(server_socket),
+					std::forward<SessionFactory>(session_factory),
+					std::tuple{std::forward<SessionArgs>(session_args)...}
+				}
+			);
 			return *this;
 		}
 

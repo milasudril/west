@@ -22,6 +22,26 @@ namespace west::io
 		readwrite_is_possible = EPOLLIN|EPOLLOUT
 	};
 
+	template<class T>
+	class fd_event_listener_ref
+	{
+	public:
+		explicit fd_event_listener_ref(T& obj): m_obj{obj}{}
+
+		template<class... Args>
+		void fd_is_ready(Args&&... args)
+		{ m_obj.fd_is_ready(std::forward<Args>(args)...); }
+
+		template<class... Args>
+		void fd_is_idle(Args&&... args)
+		{ m_obj.fd_is_idle(std::forward<Args>(args)...); }
+
+		T& get() { return m_obj; }
+
+	private:
+		T& m_obj;
+	};
+
 	template<class FdCallbackRegistry>
 	class fd_callback_registry_ref
 	{
@@ -64,16 +84,31 @@ namespace west::io
 			template<class FdEventListener>
 			explicit listener(FdEventListener&& object, fd_activity_list::iterator const& timer):
 				m_object{make_type_erased_ptr<FdEventListener>(std::forward<FdEventListener>(object))},
-				m_callback{[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
+				m_fd_is_ready{[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
 					auto& l = *static_cast<FdEventListener*>(obj);
-					l(registry, fd);
+					l.fd_is_ready(registry, fd);
+				}},
+				m_fd_is_idle{[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
+					auto& l = *static_cast<FdEventListener*>(obj);
+					l.fd_is_idle(registry, fd);
 				}},
 				m_timer{timer}
 			{}
 
-			void invoke(fd_callback_registry_ref<fd_event_monitor> callback_registry, fd_ref fd, fd_activity_list& list)
+			void fd_is_ready(fd_callback_registry_ref<fd_event_monitor> callback_registry, fd_ref fd, fd_activity_list& list)
 			{
-				m_callback(m_object.get(), callback_registry, fd);
+				m_fd_is_ready(m_object.get(), callback_registry, fd);
+
+				auto const now = std::chrono::steady_clock::now();
+				m_timer->first = now + inactivity_period;
+				list.splice(list.end(), list, m_timer);
+			}
+
+			void fd_is_idle(fd_callback_registry_ref<fd_event_monitor> callback_registry,
+				fd_ref fd,
+				fd_activity_list& list)
+			{
+				m_fd_is_idle(m_object.get(), callback_registry, fd);
 
 				auto const now = std::chrono::steady_clock::now();
 				m_timer->first = now + inactivity_period;
@@ -85,7 +120,8 @@ namespace west::io
 
 		private:
 			type_erased_ptr m_object;
-			void (*m_callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
+			void (*m_fd_is_ready)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
+			void (*m_fd_is_idle)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
 			fd_activity_list::iterator m_timer;
 		};
 
@@ -127,11 +163,31 @@ namespace west::io
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<std::pair<fd_ref const, listener>*>(event.data.ptr);
-				data->second.invoke(fd_callback_registry(), data->first, m_fd_activity_timestamps);
+				data->second.fd_is_ready(fd_callback_registry(), data->first, m_fd_activity_timestamps);
 			}
+
+			process_idle_fds();
 			flush_fds_to_remove();
-			remove_expired_fds();
+
 			return true;
+		}
+
+		void process_idle_fds()
+		{
+			auto const now = std::chrono::steady_clock::now();
+			auto i = std::begin(m_fd_activity_timestamps);
+			auto const i_end = std::end(m_fd_activity_timestamps);
+			while(i != i_end)
+			{
+				if(i->first > now)
+				{ break; }
+
+				auto const item = m_listeners.find(i->second);
+				assert(item != std::end(m_listeners));
+				item->second.fd_is_idle(fd_callback_registry(), item->first, m_fd_activity_timestamps);
+
+				++i;
+			}
 		}
 
 		template<class FdEventListener>
@@ -191,27 +247,13 @@ namespace west::io
 				{
 					epoll_event event{};
 					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd , &event);
-					auto i = m_listeners.find(fd);
+					auto const i = m_listeners.find(fd);
 					assert(i != std::end(m_listeners));
 					i->second.remove_from(m_fd_activity_timestamps);
 					m_listeners.erase(fd);
 				}
 
 				m_fds_to_remove.clear();
-			}
-		}
-
-		void remove_expired_fds()
-		{
-			auto const now = std::chrono::steady_clock::now();
-			auto i = std::begin(m_fd_activity_timestamps);
-			while(i != std::end(m_fd_activity_timestamps))
-			{
-				if(i->first > now)
-				{ break; }
-
-				m_listeners.erase(i->second);
-				i = m_fd_activity_timestamps.erase(i);
 			}
 		}
 
