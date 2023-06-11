@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <span>
 #include <cassert>
+#include <chrono>
+#include <list>
 
 namespace west::io
 {
@@ -51,10 +53,38 @@ namespace west::io
 	class fd_event_monitor
 	{
 	public:
-		struct listener
+		using activity_timestamp = std::chrono::steady_clock::time_point;
+		using fd_activity_list = std::list<std::pair<activity_timestamp, fd_ref>>;
+
+		static constexpr auto inactivity_period = std::chrono::seconds{10};
+
+		class listener
 		{
-			type_erased_ptr object;
-			void (*callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
+		public:
+			template<class FdEventListener>
+			explicit listener(FdEventListener&& object, fd_activity_list::iterator const& timer):
+				m_object{make_type_erased_ptr<FdEventListener>(std::forward<FdEventListener>(object))},
+				m_callback{[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
+					auto& l = *static_cast<FdEventListener*>(obj);
+					l(registry, fd);
+				}},
+				m_timer{timer}
+			{}
+
+			void invoke(fd_callback_registry_ref<fd_event_monitor> callback_registry, fd_ref fd, fd_activity_list& list)
+			{
+				m_callback(m_object.get(), callback_registry, fd);
+
+				assert(m_timer.has_value());
+				auto const now = std::chrono::steady_clock::now();
+				(*m_timer)->first = now + inactivity_period;
+				list.splice(list.end(), list, *m_timer);
+			}
+
+		private:
+			type_erased_ptr m_object;
+			void (*m_callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
+			std::optional<fd_activity_list::iterator> m_timer;
 		};
 
 		fd_event_monitor():m_fd{epoll_create1(0)},m_reg_should_be_cleared{false}
@@ -84,7 +114,7 @@ namespace west::io
 			for(auto& event : std::span{m_events.get(), static_cast<size_t>(n)})
 			{
 				auto const data = static_cast<std::pair<fd_ref const, listener>*>(event.data.ptr);
-				data->second.callback(data->second.object.get(), fd_callback_registry(), data->first);
+				data->second.invoke(fd_callback_registry(), data->first, m_fd_activity_timestamps);
 			}
 			flush_fds_to_remove();
 			return true;
@@ -94,15 +124,14 @@ namespace west::io
 		fd_event_monitor& add(fd_ref fd, FdEventListener&& l, listen_on events = listen_on::readwrite_is_possible)
 		{
 			assert(!m_listeners.contains(fd));
+
+			auto const now = std::chrono::steady_clock::now();
+			m_fd_activity_timestamps.push_back(std::pair{now + inactivity_period, fd});
+			auto const timer = m_fd_activity_timestamps.rbegin().base();
+
 			auto const i = m_listeners.insert(std::pair{
 				fd,
-				listener{
-					make_type_erased_ptr<FdEventListener>(std::forward<FdEventListener>(l)),
-					[](void* obj, fd_callback_registry_ref<fd_event_monitor> registry, fd_ref fd) {
-						auto& l = *static_cast<FdEventListener*>(obj);
-						l(registry, fd);
-					}
-				}
+				listener{std::forward<FdEventListener>(l), timer}
 			});
 
 			epoll_event event{
@@ -162,6 +191,7 @@ namespace west::io
 		std::unique_ptr<epoll_event[]> m_events;
 		std::unordered_map<fd_ref, listener> m_listeners;
 		std::vector<fd_ref> m_fds_to_remove;
+		fd_activity_list m_fd_activity_timestamps;
 		bool m_reg_should_be_cleared;
 	};
 }
