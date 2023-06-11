@@ -17,6 +17,16 @@ namespace west::http
 		constexpr bool operator!=(process_request_result const&) const = default;
 	};
 
+	constexpr bool is_session_terminated(request_processor_status status)
+	{
+		return status == request_processor_status::io_error
+			|| status == request_processor_status::application_error
+			|| status == request_processor_status::completed;
+	}
+
+	constexpr bool is_session_terminated(process_request_result res)
+	{ return is_session_terminated(res.status); }
+
 	template<io::socket Socket, request_handler RequestHandler>
 	class request_processor
 	{
@@ -92,10 +102,47 @@ namespace west::http
 
 		[[nodiscard]] auto socket_is_idle()
 		{
-			return process_request_result{
-				request_processor_status::completed,
-				m_state.second
-			};
+			auto const res = std::visit([]<class T>(T const&) {
+				return select_io_direction<T>::value;
+			}, m_state.first);
+
+			switch(res)
+			{
+				case session_state_io_direction::input:
+				{
+					m_session.connection.stop_reading();
+
+					m_session.response_info = response_info{};
+					auto constexpr http_status = status::request_timeout;
+					m_session.request_handler.finalize_state(m_session.response_info.header.fields,
+						finalize_state_result{
+							.http_status = http_status,
+							.error_message = make_unique_cstr(to_string(http_status))
+						});
+					m_session.response_info.header.status_line.http_version = version{1, 1};
+					m_session.response_info.header.status_line.status_code = http_status;
+					m_session.response_info.header.status_line.reason_phrase = to_string(http_status);
+
+					m_state = std::pair{
+						write_response_header{m_session.response_info.header},
+						session_state_io_direction::output
+					};
+
+					return process_request_result{
+						request_processor_status::more_data_needed,
+						m_state.second
+					};
+				}
+
+				case session_state_io_direction::output:
+					return process_request_result {
+						request_processor_status::completed,
+						m_state.second
+					};
+
+				default:
+					__builtin_unreachable();
+			}
 		}
 
 		auto& session()
@@ -113,15 +160,5 @@ namespace west::http
 		using buffer_span = io_adapter::buffer_span<buffer_type::value_type, std::tuple_size_v<buffer_type>>;
 		std::array<buffer_span, 2> m_buff_spans;
 	};
-
-	constexpr bool is_session_terminated(request_processor_status status)
-	{
-		return status == request_processor_status::io_error
-			|| status == request_processor_status::application_error
-			|| status == request_processor_status::completed;
-	}
-
-	constexpr bool is_session_terminated(process_request_result res)
-	{ return is_session_terminated(res.status); }
 }
 #endif
