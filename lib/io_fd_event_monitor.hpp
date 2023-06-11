@@ -75,19 +75,13 @@ namespace west::io
 			{
 				m_callback(m_object.get(), callback_registry, fd);
 
-			//	assert(m_timer.has_value());
 				auto const now = std::chrono::steady_clock::now();
 				m_timer->first = now + inactivity_period;
 				list.splice(list.end(), list, m_timer);
 			}
 
 			void remove_from(fd_activity_list& list)
-			{
-			//	assert(m_timer.has_value());
-			//	auto const timer = *m_timer;
-			//	m_timer.reset();
-				list.erase(m_timer);
-			}
+			{ list.erase(m_timer); }
 
 		private:
 			type_erased_ptr m_object;
