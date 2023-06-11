@@ -189,6 +189,9 @@ namespace
 
 			return adm_session_status::keep_connection;
 		}
+
+		auto socket_is_idle()
+		{ return adm_session_status::keep_connection; }
 	};
 
 	template<class CallbackRegistry>

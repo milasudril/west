@@ -58,8 +58,8 @@ namespace west
 		void fd_is_ready(auto event_monitor, io::fd_ref fd)
 		{ finalize_event(session.socket_is_ready(), event_monitor, fd); }
 
-		void fd_is_idle(auto, io::fd_ref)
-		{}
+		void fd_is_idle(auto event_monitor, io::fd_ref fd)
+		{ finalize_event(session.socket_is_idle(), event_monitor, fd); }
 
 		template<session_status SessionStatus, class EventMonitor>
 		void finalize_event(SessionStatus&& status, EventMonitor event_monitor, io::fd_ref fd)
@@ -121,6 +121,8 @@ namespace west
 	class service_registry
 	{
 	public:
+		static constexpr auto inactivity_period = io::fd_event_monitor::inactivity_period;
+
 		template<server_socket ServerSocket, class SessionFactory,	class... SessionArgs>
 		requires session_factory<SessionFactory, typename detail::connection_type<ServerSocket>::type, SessionArgs...>
 		service_registry& enroll(ServerSocket&& server_socket,

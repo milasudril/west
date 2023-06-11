@@ -90,6 +90,14 @@ namespace west::http
 			}
 		}
 
+		[[nodiscard]] auto socket_is_idle()
+		{
+			return process_request_result{
+				request_processor_status::completed,
+				m_state.second
+			};
+		}
+
 		auto& session()
 		{ return m_session; }
 

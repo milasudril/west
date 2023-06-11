@@ -11,10 +11,10 @@
 namespace
 {
 	enum class session_status{close_connection, keep_connection};
-	
+
 	constexpr bool is_session_terminated(session_status status)
 	{ return status == session_status::close_connection; }
-	
+
 	struct session
 	{
 		west::io::inet_connection connection;
@@ -27,7 +27,7 @@ namespace
 			{
 				auto res = connection.read(buffer);
 				if(res.bytes_read != 0)
-				{	
+				{
 					std::string_view const str{std::data(buffer), res.bytes_read};
 					if(str == "shutdown")
 					{ event_monitor.remove(server_fd); }
@@ -37,7 +37,7 @@ namespace
 						(void)connection.write(std::string_view{"here are some data"});
 					}
 				}
-				
+
 				if(res.bytes_read == 0)
 				{
 					switch(res.ec)
@@ -52,8 +52,11 @@ namespace
 				}
 			}
 		}
+
+		session_status socket_is_idle()
+		{ return session_status::close_connection; }
 	};
-	
+
 	struct factory
 	{
 		west::io::fd_ref server_fd;
@@ -86,27 +89,27 @@ TESTCASE(west_service_registry_enroll)
 	auto const server_port = server_socket.port();
 	std::jthread server_thread{[server_socket = std::move(server_socket)]() mutable {
 		west::service_registry registry{};
-		
+
 		registry
 			.enroll(std::move(server_socket), factory{server_socket.fd(), registry.fd_callback_registry()})
 			.process_events();
 	}};
-	
+
 	enum class client_action{connect, write_request, read_response, disconnect};
 	struct client_state
 	{
 		client_action next_action{client_action::connect};
 		west::io::fd_owner socket;
 	};
-	
+
 	std::array<client_state, 16> clients{};
-	
+
 	auto all_clients_disconnected = [&clients](){
 		return std::ranges::all_of(clients, [](auto const& item) {
 			return item.next_action == client_action::disconnect && item.socket == nullptr;
 		});
 	};
-	
+
 	std::uniform_int_distribution U{static_cast<size_t>(0), std::size(clients) - 1};
 	std::random_device rng;
 	while(!all_clients_disconnected())
@@ -152,4 +155,33 @@ TESTCASE(west_service_registry_enroll)
 		std::string_view buffer{"shutdown"};
 		EXPECT_EQ(::write(socket.get(), std::data(buffer), std::size(buffer)), std::ssize(buffer));
 	}
+}
+
+TESTCASE(west_service_registry_socket_is_idle)
+{
+	west::io::inet_address address{"127.0.0.1"};
+	west::io::inet_server_socket server_socket{
+		address,
+		std::ranges::iota_view{49152, 65536},
+		128
+	};
+
+	auto const server_port = server_socket.port();
+	std::jthread server_thread{[server_socket = std::move(server_socket)]() mutable {
+		west::service_registry registry{};
+
+		registry
+			.enroll(std::move(server_socket), factory{server_socket.fd(), registry.fd_callback_registry()})
+			.process_events();
+	}};
+
+	auto const t0 = std::chrono::steady_clock::now();
+	auto connection = connect_to(address, server_port);
+	{
+		auto socket = connect_to(address, server_port);
+		std::string_view buffer{"shutdown"};
+		EXPECT_EQ(::write(socket.get(), std::data(buffer), std::size(buffer)), std::ssize(buffer));
+	}
+	server_thread.join();
+	EXPECT_GE(std::chrono::steady_clock::now() - t0, west::service_registry::inactivity_period);
 }
