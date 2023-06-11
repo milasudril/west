@@ -263,6 +263,21 @@ This web server only supports HTTP version 1.1'''.replace('\n', '\r\n')
 			cpu_usage = get_cpu_usage(server.pid)
 			assert cpu_usage < 0.5
 
+def test_process_bad_request_incomplete_header(server):
+		with socket.create_connection(('127.0.0.1', server.http_port)) as connection:
+			with connection.makefile('rwb') as connfile:
+				connfile.write(str.encode('''GET / HTTP/1.'''))
+				connfile.flush()
+				res = connfile.read()
+				assert res.decode()== '''HTTP/1.1 408 Request timeout
+Content-Length: 15
+Content-Type: text/plain
+
+Request timeout'''.replace('\n', '\r\n')
+
+			cpu_usage = get_cpu_usage(server.pid)
+			assert cpu_usage < 0.5
+
 def main(argv):
 	if sys.argv[1] == 'compile':
 		init_test_suite(json.loads(sys.argv[2]))
