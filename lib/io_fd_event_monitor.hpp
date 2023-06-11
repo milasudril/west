@@ -98,7 +98,10 @@ namespace west::io
 			fd_activity_list::iterator m_timer;
 		};
 
-		fd_event_monitor():m_fd{epoll_create1(0)},m_reg_should_be_cleared{false}
+		fd_event_monitor():
+			m_fd{epoll_create1(0)},
+			m_event_buffer_capacity{0},
+			m_reg_should_be_cleared{false}
 		{
 			if(m_fd == nullptr)
 			{ throw system_error{"Failed to create epoll instance", errno}; }
@@ -109,10 +112,18 @@ namespace west::io
 
 		[[nodiscard]] bool wait_for_and_dispatch_events()
 		{
-			if(std::size(m_listeners) == 0)
+			auto const num_listeners = std::size(m_listeners);
+
+			if(num_listeners == 0)
 			{ return false; }
 
-			std::span event_buffer{m_events.get(), std::size(m_listeners)};
+			if(num_listeners > m_event_buffer_capacity)
+			{
+				m_events = std::make_unique_for_overwrite<epoll_event[]>(num_listeners);
+				m_event_buffer_capacity = num_listeners;
+			}
+
+			std::span event_buffer{m_events.get(), num_listeners};
 
 			auto const n = ::epoll_wait(m_fd.get(),
 				std::data(event_buffer),
@@ -157,7 +168,6 @@ namespace west::io
 				throw system_error{"Failed to add event listener for file descriptor", saved_errno};
 			}
 
-			m_events = std::make_unique_for_overwrite<epoll_event[]>(std::size(m_listeners));
 			return *this;
 		}
 
@@ -206,6 +216,7 @@ namespace west::io
 		fd_owner m_fd;
 
 		std::unique_ptr<epoll_event[]> m_events;
+		size_t m_event_buffer_capacity;
 		std::unordered_map<fd_ref, listener> m_listeners;
 		std::vector<fd_ref> m_fds_to_remove;
 		fd_activity_list m_fd_activity_timestamps;
