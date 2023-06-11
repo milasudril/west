@@ -76,7 +76,7 @@ namespace west::io
 		using activity_timestamp = std::chrono::steady_clock::time_point;
 		using fd_activity_list = std::list<std::pair<activity_timestamp, fd_ref>>;
 
-		static constexpr auto inactivity_period = std::chrono::seconds{10};
+		static constexpr auto inactivity_period = std::chrono::seconds{20};
 
 		class listener
 		{
