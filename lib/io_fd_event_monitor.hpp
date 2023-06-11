@@ -125,7 +125,7 @@ namespace west::io
 			auto const n = ::epoll_wait(m_fd.get(),
 				std::data(event_buffer),
 				static_cast<int>(std::size(event_buffer)),
-				-1);
+				1000);
 
 			if(n == -1)
 			{ throw system_error{"epoll_wait failed", errno}; }
@@ -136,6 +136,7 @@ namespace west::io
 				data->second.invoke(fd_callback_registry(), data->first, m_fd_activity_timestamps);
 			}
 			flush_fds_to_remove();
+			remove_expired_fds();
 			return true;
 		}
 
@@ -203,6 +204,20 @@ namespace west::io
 				}
 
 				m_fds_to_remove.clear();
+			}
+		}
+
+		void remove_expired_fds()
+		{
+			auto const now = std::chrono::steady_clock::now();
+			auto i = std::begin(m_fd_activity_timestamps);
+			while(i != std::end(m_fd_activity_timestamps))
+			{
+				if(i->first > now)
+				{ break; }
+
+				m_listeners.erase(i->second);
+				i = m_fd_activity_timestamps.erase(i);
 			}
 		}
 
