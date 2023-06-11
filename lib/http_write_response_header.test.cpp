@@ -51,7 +51,7 @@ TESTCASE(west_http_write_response_header_write_completed)
 
 	while(true)
 	{
-		auto res = writer(buff_span, session);
+		auto res = writer.socket_is_ready(buff_span, session);
 		if(res.status == west::http::session_state_status::more_data_needed)
 		{ EXPECT_EQ(output_buffer.empty(), true); }
 		else
@@ -97,6 +97,6 @@ TESTCASE(west_http_write_response_header_connection_closed)
 		west::http::response_header{}
 	};
 
-	auto res = writer(buff_span, session);
+	auto res = writer.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::connection_closed);
 }

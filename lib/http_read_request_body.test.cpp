@@ -91,7 +91,7 @@ TESTCASE(http_read_request_body_read_all_data)
 	auto const message_size = src.get_data().size() - 21;
 	west::http::read_request_body reader{message_size};
 
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::accepted);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Hej"});
@@ -128,7 +128,7 @@ TESTCASE(http_read_request_body_read_early_eof)
 	auto const message_size = src.get_data().size() + 23;
 	west::http::read_request_body reader{message_size};
 
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Client claims there is more data to read"});
@@ -159,7 +159,7 @@ TESTCASE(http_read_request_body_read_req_handler_fails_to_read)
 	auto const message_size = src.get_data().size() - 21;
 	west::http::read_request_body reader{message_size};
 
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Error"});
@@ -190,7 +190,7 @@ TESTCASE(http_read_request_body_read_req_handler_blocks_when_reading)
 	auto const message_size = src.get_data().size() - 21;
 	west::http::read_request_body reader{message_size};
 
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
 	EXPECT_EQ(res.state_result.error_message.get(), nullptr);
@@ -221,7 +221,7 @@ TESTCASE(http_read_request_body_read_req_handler_rej_in_finalize)
 	auto const message_size = src.get_data().size() - 21;
 	west::http::read_request_body reader{message_size};
 
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::i_am_a_teapot);
 	EXPECT_EQ(res.state_result.error_message.get(), std::string_view{"Hej"});

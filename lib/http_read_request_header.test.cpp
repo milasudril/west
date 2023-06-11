@@ -36,7 +36,7 @@ TESTCASE(west_http_read_request_header_read_successful_with_data_after_header)
 	buff_span.reset_with_new_length(3);
 
 	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::accepted);
@@ -61,7 +61,7 @@ TESTCASE(west_http_read_request_header_read_incomplete_at_eof)
 "host: localhost:80\r\n\r"}};
 
 	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
@@ -78,7 +78,7 @@ TESTCASE(west_http_read_request_header_read_unsupported_http_version)
 
 	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::http_version_not_supported);
@@ -98,7 +98,7 @@ TESTCASE(west_http_read_request_header_read_successful_fail_in_req_handler)
 
 	west::http::session session{src, request_handler{west::http::status::not_found}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::not_found);
@@ -117,7 +117,7 @@ TESTCASE(west_http_read_request_header_read_bad_header)
 
 	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer())};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::bad_request);
@@ -138,7 +138,7 @@ TESTCASE(west_http_read_request_header_read_oversized_header)
 
 	west::http::session session{src, request_handler{}, west::http::request_info{}, west::http::response_header{}};
 	west::http::read_request_header reader{strlen(src.get_pointer()) - 3};
-	auto res = reader(buff_span, session);
+	auto res = reader.socket_is_ready(buff_span, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::client_error_detected);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::request_entity_too_large);

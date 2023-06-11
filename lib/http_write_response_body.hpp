@@ -19,7 +19,7 @@ namespace west::http
 		}
 
 		template<io::data_sink Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
 	private:
@@ -28,7 +28,7 @@ namespace west::http
 }
 
 template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
-[[nodiscard]] auto west::http::write_response_body::operator()(
+[[nodiscard]] auto west::http::write_response_body::socket_is_ready(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Sink, RequestHandler>& session)
 {

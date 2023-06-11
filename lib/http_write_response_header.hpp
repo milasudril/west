@@ -19,7 +19,7 @@ namespace west::http
 		{}
 
 		template<io::data_sink Sink, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Sink, RequestHandler>& session);
 
 	private:
@@ -35,7 +35,7 @@ struct west::io_adapter::error_code_checker<west::http::resp_header_serializer_e
 };
 
 template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
-[[nodiscard]] auto west::http::write_response_header::operator()(
+[[nodiscard]] auto west::http::write_response_header::socket_is_ready(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Sink, RequestHandler>& session)
 {

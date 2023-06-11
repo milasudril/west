@@ -13,13 +13,13 @@ namespace west::http
 	{
 	public:
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 	};
 }
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
-[[nodiscard]] auto west::http::wait_for_data::operator()(
+[[nodiscard]] auto west::http::wait_for_data::socket_is_ready(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {

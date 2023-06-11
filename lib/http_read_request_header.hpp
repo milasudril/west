@@ -17,7 +17,7 @@ namespace west::http
 		{}
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
-		[[nodiscard]] auto operator()(io_adapter::buffer_span<char, BufferSize>& buffer,
+		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,
 			session<Source, RequestHandler>& session);
 
 	private:
@@ -40,7 +40,7 @@ struct west::io_adapter::error_code_checker<west::http::req_header_parser_error_
 };
 
 template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
-[[nodiscard]] auto west::http::read_request_header::operator()(
+[[nodiscard]] auto west::http::read_request_header::socket_is_ready(
 	io_adapter::buffer_span<char, BufferSize>& buffer,
 	session<Source, RequestHandler>& session)
 {

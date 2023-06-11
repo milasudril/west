@@ -35,7 +35,7 @@ namespace west::http
 			while(true)
 			{
 				auto res = std::visit([this]<class T>(T& state){
-					return state(std::get<select_buffer_index<T>::value>(m_buff_spans), m_session);
+					return state.socket_is_ready(std::get<select_buffer_index<T>::value>(m_buff_spans), m_session);
 				}, m_state.first);
 
 				switch(res.status)

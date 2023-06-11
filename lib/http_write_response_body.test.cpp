@@ -158,7 +158,7 @@ TESTCASE(http_write_response_body_write_all_data)
 
 	west::http::write_response_body writer{std::size(src)};
 
-	auto res = writer(buff_sapn, session);
+	auto res = writer.socket_is_ready(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::completed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
@@ -189,7 +189,7 @@ TESTCASE(http_write_response_body_write_failed)
 
 	west::http::write_response_body writer{std::size(src)};
 
-	auto res = writer(buff_sapn, session);
+	auto res = writer.socket_is_ready(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
@@ -219,7 +219,7 @@ TESTCASE(http_write_response_body_blocking_request_handler)
 
 	west::http::write_response_body writer{std::size(src)};
 
-	auto res = writer(buff_sapn, session);
+	auto res = writer.socket_is_ready(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::more_data_needed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::ok);
@@ -249,7 +249,7 @@ TESTCASE(http_write_response_body_failing_request_handler)
 
 	west::http::write_response_body writer{std::size(src)};
 
-	auto res = writer(buff_sapn, session);
+	auto res = writer.socket_is_ready(buff_sapn, session);
 
 	EXPECT_EQ(res.status, west::http::session_state_status::write_response_failed);
 	EXPECT_EQ(res.state_result.http_status, west::http::status::internal_server_error);
