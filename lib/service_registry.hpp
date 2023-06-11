@@ -56,24 +56,27 @@ namespace west
 		io::listen_on events;
 
 		void fd_is_ready(auto event_monitor, io::fd_ref fd)
+		{ finalize_event(session.socket_is_ready(), event_monitor, fd); }
+
+		void fd_is_idle(auto, io::fd_ref)
+		{}
+
+		template<session_status SessionStatus, class EventMonitor>
+		void finalize_event(SessionStatus&& status, EventMonitor event_monitor, io::fd_ref fd)
 		{
-			auto result = session.socket_is_ready();
-			if(is_session_terminated(result)) [[unlikely]]
+			if(is_session_terminated(status))
 			{
 				event_monitor.remove(fd);
 				return;
 			}
 
-			if(auto new_events = session_state_mapper<std::remove_cvref_t<decltype(result)>>{}(result);
+			if(auto new_events = session_state_mapper<SessionStatus>{}(status);
 				new_events != events)
 			{
 				event_monitor.modify(fd, new_events);
 				events = new_events;
 			}
 		}
-
-		void fd_is_idle(auto, io::fd_ref)
-		{}
 	};
 
 
