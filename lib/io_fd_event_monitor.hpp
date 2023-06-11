@@ -71,30 +71,27 @@ namespace west::io
 				m_timer{timer}
 			{}
 
-			void invoke(fd_callback_registry_ref<fd_event_monitor> callback_registry, fd_ref fd, fd_activity_list&)
+			void invoke(fd_callback_registry_ref<fd_event_monitor> callback_registry, fd_ref fd, fd_activity_list& list)
 			{
-				fprintf(stderr, "Activity on fd %d\n", static_cast<int>(fd));
 				m_callback(m_object.get(), callback_registry, fd);
 
 			//	assert(m_timer.has_value());
-			//	auto const now = std::chrono::steady_clock::now();
-			//	(*m_timer)->first = now + inactivity_period;
-			//	list.splice(list.end(), list, *m_timer);
+				auto const now = std::chrono::steady_clock::now();
+				m_timer->first = now + inactivity_period;
+				list.splice(list.end(), list, m_timer);
 			}
 
-			void remove_from(fd_activity_list&)
+			void remove_from(fd_activity_list& list)
 			{
-			//	fprintf(stderr, "Removing entry from list %p\n", this);
 			//	assert(m_timer.has_value());
 			//	auto const timer = *m_timer;
 			//	m_timer.reset();
-			//	list.erase(m_timer);
+				list.erase(m_timer);
 			}
 
 		private:
 			type_erased_ptr m_object;
 			void (*m_callback)(void*, fd_callback_registry_ref<fd_event_monitor>, fd_ref);
-		//	std::optional<fd_activity_list::iterator> m_timer;
 			fd_activity_list::iterator m_timer;
 		};
 
@@ -149,7 +146,7 @@ namespace west::io
 
 			auto const now = std::chrono::steady_clock::now();
 			m_fd_activity_timestamps.push_back(std::pair{now + inactivity_period, fd});
-			auto const timer = m_fd_activity_timestamps.rbegin().base();
+			auto const timer = std::prev(m_fd_activity_timestamps.end());
 
 			auto const i = m_listeners.insert(std::pair{
 				fd,
@@ -199,13 +196,10 @@ namespace west::io
 				{
 					epoll_event event{};
 					::epoll_ctl(m_fd.get(), EPOLL_CTL_DEL, fd , &event);
-
-					auto const i = m_listeners.find(fd);
+					auto i = m_listeners.find(fd);
 					assert(i != std::end(m_listeners));
-					assert(!m_fd_activity_timestamps.empty());
-					assert(fd != fd_ref{0});
 					i->second.remove_from(m_fd_activity_timestamps);
-					m_listeners.erase(i);
+					m_listeners.erase(fd);
 				}
 
 				m_fds_to_remove.clear();
