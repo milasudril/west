@@ -4,6 +4,7 @@
 #include "./service_registry.hpp"
 #include "./http_request_processor.hpp"
 #include "./http_session_factory.hpp"
+#include "./http_request_handler.hpp"
 
 template<>
 struct west::session_state_mapper<west::http::process_request_result>
@@ -24,7 +25,7 @@ struct west::session_state_mapper<west::http::process_request_result>
 
 namespace west
 {
-	template<class RequestHandler, server_socket ServerSocket, class... SessionArgs>
+	template<http::request_handler RequestHandler, server_socket ServerSocket, class... SessionArgs>
 	auto& enroll_http_service(service_registry& registry,
 		ServerSocket&& server,
 		SessionArgs&&... session_args)
