@@ -24,12 +24,12 @@ struct west::session_state_mapper<west::http::process_request_result>
 
 namespace west
 {
-	template<class RequestHandler, class... SessionArgs>
+	template<class RequestHandler, server_socket ServerSocket, class... SessionArgs>
 	auto& enroll_http_service(service_registry& registry,
-		io::inet_server_socket&& server,
+		ServerSocket&& server,
 		SessionArgs&&... session_args)
 	{
-		return registry.enroll(std::move(server),
+		return registry.enroll(std::forward<ServerSocket>(server),
 			http::session_factory<RequestHandler>{},
 			std::forward<SessionArgs>(session_args)...);
 	}
