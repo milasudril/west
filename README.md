@@ -1,7 +1,9 @@
 # west
-WEb Server Template is a bare-bones web server for use with C++20 or later. It
+WEb Server Template is a bare-bones header-only web server for use with C++20 or later. It
 
 * Uses epoll to determine which socket is active
+
+* Is currently single-threaded. Simultaneous requests is a future topic.
 
 * Has a socket expire check (fires 20 s after no socket activity)
 
