@@ -22,3 +22,8 @@ coverage-build:
 __targets_gcov/.coverage/coverage.html: coverage-build ./coverage_collect.sh
 	./coverage_collect.sh
 
+DESTDIR?=""
+PREFIX?="/usr"
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/include/west
+	find -name '*.hpp' -exec cp \{\} $(DESTDIR)$(PREFIX)/include/west \;

@@ -14,10 +14,7 @@ namespace west::http
 	public:
 		explicit read_request_body(size_t content_length):
 			m_content_length{content_length}
-		{
-			fprintf(stderr, "Client will send %zu bytes\n", content_length);
-			fflush(stderr);
-		}
+		{ }
 
 		template<io::data_source Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,

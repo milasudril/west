@@ -25,8 +25,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 {
 	if(std::size(buffer.span_to_read()) != 0)
 	{
-		fprintf(stderr, "wait_for_data: Data exists in buffer\n");
-		fflush(stderr);
 		return session_state_response{
 			.status = session_state_status::completed,
 			.state_result = finalize_state_result {

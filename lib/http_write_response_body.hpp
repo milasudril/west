@@ -13,10 +13,7 @@ namespace west::http
 	public:
 		explicit write_response_body(size_t bytes_to_write):
 			m_bytes_to_write{bytes_to_write}
-		{
-			fprintf(stderr, "Server is going to send %zu bytes\n", bytes_to_write);
-			fflush(stderr);
-		}
+		{ }
 
 		template<io::data_sink Source, class RequestHandler, size_t BufferSize>
 		[[nodiscard]] auto socket_is_ready(io_adapter::buffer_span<char, BufferSize>& buffer,

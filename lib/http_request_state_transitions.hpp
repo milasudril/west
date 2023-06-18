@@ -50,37 +50,22 @@ namespace west::http
 
 	template<>
 	inline auto make_state_handler<read_request_header>(request_info const&, response_info const&)
-	{ 
-		fprintf(stderr, "read_request_header\n");
-		fflush(stderr);
-		return read_request_header{};
-	}
+	{ return read_request_header{}; }
 
 	template<>
 	inline auto make_state_handler<read_request_body>(request_info const& request,
 		response_info const&)
-	{
-		fprintf(stderr, "read_request_body\n");
-		fflush(stderr);
-		return read_request_body{request.content_length};
-	}
+	{ return read_request_body{request.content_length}; }
 
 	template<>
 	inline auto make_state_handler<write_response_header>(request_info const&,
 		response_info const& response)
-	{ 
-		fprintf(stderr, "write_response_header\n");
-		fflush(stderr);
-		return write_response_header{response.header};
-	}
+	{ return write_response_header{response.header}; }
 
 	template<>
 	inline auto make_state_handler<write_response_body>(request_info const&,
 		response_info const& response)
 	{
-		fprintf(stderr, "write_response_body\n");
-		fflush(stderr);
-
 		assert(!response.header.fields.contains("Transfer-encoding"));
 
 		auto i = response.header.fields.find("Content-Length");
@@ -96,16 +81,12 @@ namespace west::http
 	template<>
 	inline auto make_state_handler<wait_for_data>(request_info const&,
 		response_info const&)
-	{ 
-		fprintf(stderr, "wait_for_data\n");
-		fflush(stderr);
-		return wait_for_data{};
-	}
+	{ return wait_for_data{}; }
 
 
 
 	enum class session_state_io_direction{input, output};
-	
+
 	template<class T>
 	struct select_io_direction{};
 
@@ -128,13 +109,13 @@ namespace west::http
 	template<>
 	struct select_io_direction<wait_for_data>
 	{ static constexpr auto value = session_state_io_direction::input; };
-	
 
-	
+
+
 	template<class T>
 	struct select_buffer_index
 	{
-		static constexpr size_t value = 
+		static constexpr size_t value =
 			select_io_direction<T>::value == session_state_io_direction::input?	 0 : 1;
 	};
 

@@ -132,9 +132,6 @@ namespace west::io
 				};
 			}
 
-			fprintf(stderr, "Read %zu of %zu bytes from socket\n", static_cast<size_t>(res), std::size(buffer));
-			fflush(stderr);
-
 			return read_result{
 				.bytes_read = static_cast<size_t>(res),
 				.ec = operation_result::completed
@@ -146,8 +143,6 @@ namespace west::io
 			auto res = ::send(m_fd.get(), std::data(buffer), std::size(buffer), MSG_NOSIGNAL);
 			if(res == -1)
 			{
-				fprintf(stderr, "---\n");
-				fflush(stderr);
 				return write_result{
 					.bytes_written = 0,
 					.ec = (errno == EAGAIN || errno == EWOULDBLOCK)?
@@ -156,8 +151,6 @@ namespace west::io
 				};
 			}
 
-			fprintf(stderr, "Write %zu of %zu bytes to socket\n", static_cast<size_t>(res), std::size(buffer));
-			fflush(stderr);
 			return write_result{
 				.bytes_written = static_cast<size_t>(res),
 				.ec = operation_result::completed
