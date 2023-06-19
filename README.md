@@ -135,8 +135,8 @@ namespace
 			// to prepare for the answer. You should append Content-Length and Content-Type to
 			// `fields`
 
-			fields.append("Content-Length", std::to_string(std::size( /* content-size */ )))
-				.append("Content-Type", /*content-type*/ );
+			fields.append("Content-Length", std::to_string(0)
+				.append("Content-Type", "text/plain");
 
 			west::http::finalize_state_result validation_result;
 			validation_result.http_status = west::http::status::ok;
@@ -149,8 +149,8 @@ namespace
 			// This function is called in case of an error during the processing of the request. `res`
 			// contains information about the error
 
-			fields.append("Content-Length", std::to_string(std::size( /* content-size */ )))
-				.append("Content-Type", /* content-type */);
+			fields.append("Content-Length", std::to_string(0)
+				.append("Content-Type", "text/plain");
 		}
 
 		auto read_response_content(std::span<char> buffer)
@@ -159,7 +159,7 @@ namespace
 			// Copy appropriate content to `buffer`
 
 			return request_handler_read_result{
-				bytes_to_read,
+				std::size(buffer),
 				request_handler_error_code::no_error
 			};
 		}
