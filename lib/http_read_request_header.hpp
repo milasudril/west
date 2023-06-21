@@ -103,7 +103,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						session.request_info.content_length = *content_length;
 						auto const saved_http_status = res.http_status;
 						return session_state_response{
-							.status = is_client_error(saved_http_status) ?
+							.status = is_error(saved_http_status) ?
 								session_state_status::client_error_detected : session_state_status::completed,
 							.state_result = std::move(res)
 						};

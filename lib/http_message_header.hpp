@@ -102,6 +102,13 @@ namespace west::http
 		return status_val >= 400 && status_val < 499;
 	}
 
+	constexpr bool is_error(status val)
+	{
+		using underlying_type = std::underlying_type_t<status>;
+		auto const status_val = static_cast<underlying_type>(val);
+		return status_val >= 400 && status_val < 599;
+	}
+
 	constexpr char const* to_string(status val)
 	{
 		switch(val)
