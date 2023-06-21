@@ -17,6 +17,14 @@ namespace west
 		return ret;
 	}
 
+	inline auto make_unique_cstr(std::string_view sv)
+	{
+		auto n = std::size(sv);
+		auto ret = std::make_unique<char[]>(n + 1);
+		memcpy(ret.get(), std::data(sv), n + 1);
+		return ret;
+	}
+
 	template<class T>
 	requires(std::is_arithmetic_v<T>)
 	inline std::optional<T> to_number(std::string_view val)

@@ -260,7 +260,7 @@ namespace west::http
 
 		bool operator!=(std::string_view other) const
 		{ return m_value != other; }
-		
+
 		std::string_view value() const
 		{ return m_value; }
 
@@ -294,7 +294,7 @@ namespace west::http
 
 		bool operator!=(std::string_view other) const
 		{ return m_value != other; }
-		
+
 		std::string_view value() const
 		{ return m_value; }
 
@@ -423,7 +423,7 @@ namespace west::http
 		std::map<field_name, std::string, std::less<>> m_fields;
 	};
 
-	auto get_content_length(field_map const& fields)
+	inline auto get_content_length(field_map const& fields)
 	{
 		auto i = fields.find("Content-Length");
 		if(i == std::end(fields))
