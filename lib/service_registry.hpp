@@ -19,6 +19,10 @@ namespace west
 	{
 		{ x.accept() } -> connection;
 	};
+	
+	template<class T>
+	// HACK: An input fd is not a connection, but all members will have the same semantics
+	concept input_fd = io::data_source<T> && connection<T>;
 
 	template<class T>
 	concept session_status = requires(T x)
@@ -118,6 +122,19 @@ namespace west
 		void fd_is_idle(auto, io::fd_ref)
 		{}
 	};
+	
+	template<class InputFd, class InputFdEventHandler>
+	struct data_source_event_handler
+	{
+		void fd_is_ready(auto event_monitor, io::fd_ref fd)
+		{ eh.fd_is_ready(event_monitor, fd); }
+		
+		void fd_is_idle(auto event_monitor, io::fd_ref fd)
+		{ eh.fd_is_idle(event_monitor, fd); }		
+		
+		InputFd fd;
+		InputFdEventHandler eh;
+	};
 
 	class service_registry
 	{
@@ -141,18 +158,19 @@ namespace west
 			);
 			return *this;
 		}
-#if 0		
-		template<data_source DataSource, data_source_event_handler EventHandler>
-		service_registry& enroll(DataSource&& data_source)
+
+		template<input_fd InputFd, class InputFdEventHandler>
+		service_registry& enroll(InputFd&& data_source, InputFdEventHandler&& eh)
 		{
 			data_source.set_non_blocking();
 			auto const data_source_fd = data_source.fd();
-			m_event_monitor.add(data_source_fd,
-				data_source_event_handler{std::forward<DataSource>(data_source)});
+			m_event_monitor.add(data_source_fd, 
+				data_source_event_handler{std::forward<InputFd>(data_source),
+					std::forward<InputFdEventHandler>(eh)},
+				io::listen_on::read_is_possible);
 			
 			return *this;
-		}
-#endif
+ 		}
 
 		service_registry& process_events()
 		{
