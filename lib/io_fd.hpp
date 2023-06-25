@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/signalfd.h>
+#include <signal.h>
 #include <fcntl.h>
 
 #include <memory>
@@ -64,6 +66,23 @@ namespace west::io
 		if(tmp == -1)
 		{ throw system_error{"Failed to create socket", errno}; }
 
+		return fd_owner{fd_ref{tmp}};
+	}
+	
+	template<class ... Sigs>
+	inline auto make_sigmask(Sigs... sigs)
+	{
+		sigset_t mask{};
+		sigemptyset(&mask);
+		(..., sigaddset(&mask, sigs));
+		return mask;
+	}
+	
+	[[nodiscard]] inline auto create_signal_fd(sigset_t sigmask)
+	{
+		auto const tmp = ::signalfd(-1, &sigmask, 0);
+		if(tmp == -1)
+		{ throw system_error{"Failed to create signalfd", errno}; }
 		return fd_owner{fd_ref{tmp}};
 	}
 
