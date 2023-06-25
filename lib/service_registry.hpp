@@ -2,6 +2,7 @@
 #define WEST_SERVER_REGISTRY_HPP
 
 #include "./io_fd.hpp"
+#include "./io_interfaces.hpp"
 #include "./io_fd_event_monitor.hpp"
 
 namespace west
@@ -10,13 +11,13 @@ namespace west
 	concept connection = requires(T x)
 	{
 		{ x.fd() } -> std::same_as<io::fd_ref>;
-	};
+		{ x.set_non_blocking() } -> std::same_as<void>;
+	};	
 
 	template<class T>
-	concept server_socket = requires(T x)
+	concept server_socket = connection<T> && requires(T x)
 	{
 		{ x.accept() } -> connection;
-		{ x.fd() } -> std::same_as<io::fd_ref>;
 	};
 
 	template<class T>
@@ -140,6 +141,18 @@ namespace west
 			);
 			return *this;
 		}
+#if 0		
+		template<data_source DataSource, data_source_event_handler EventHandler>
+		service_registry& enroll(DataSource&& data_source)
+		{
+			data_source.set_non_blocking();
+			auto const data_source_fd = data_source.fd();
+			m_event_monitor.add(data_source_fd,
+				data_source_event_handler{std::forward<DataSource>(data_source)});
+			
+			return *this;
+		}
+#endif
 
 		service_registry& process_events()
 		{
