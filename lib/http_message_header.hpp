@@ -58,6 +58,14 @@ namespace west::http
 		reset_content = 205,
 		partial_content = 206,
 
+		multiple_choices = 300,
+		moved_permanently = 301,
+		found = 302,
+		see_other = 303,
+		not_modified = 304,
+		temporary_redirect = 307,
+		permanent_redirect = 308,
+
 		bad_request = 400,
 		unauthorized = 401,
 		payment_required = 402,
@@ -127,6 +135,21 @@ namespace west::http
 				return "Reset content";
 			case status::partial_content:
 				return "Partial content";
+
+			case status::multiple_choices:
+				return "Multiple choices";
+			case status::moved_permanently:
+				return "Moved permanently";
+			case status::found:
+				return "Found";
+			case status::see_other:
+				return "See other";
+			case status::not_modified:
+				return "Not modified";
+			case status::temporary_redirect:
+				return "Temporary redirect";
+			case status::permanent_redirect:
+				return "Permanent redirect";
 
 			case status::bad_request:
 				return "Bad request";
