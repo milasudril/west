@@ -73,7 +73,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 				// GCOVR_EXCL_STOP
 					case req_header_parser_error_code::completed:
 					{
-						auto header = req_header_parser.take_result();
+						auto& header = session.request_info.header;
+						header = req_header_parser.take_result();
 						if(header.request_line.http_version != version{1, 1})
 						{
 							return session_state_response{
@@ -99,7 +100,6 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 						}
 
 						auto res = session.request_handler.finalize_state(header);
-						session.request_info.header = std::move(header);
 						session.request_info.content_length = *content_length;
 						auto const saved_http_status = res.http_status;
 						return session_state_response{
