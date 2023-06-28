@@ -234,6 +234,9 @@ namespace west::http
 	constexpr bool is_not_printable(char ch)
 	{ return (ch >= '\0' && ch <= ' ')  || ch == 127; }
 
+	constexpr bool is_printable(char ch)
+	{ return !is_printable(ch); }
+
 	constexpr bool is_strict_whitespace(char ch)
 	{ return ch == ' ' || ch == '\t'; }
 
@@ -248,13 +251,18 @@ namespace west::http
 			});
 	}
 
+	constexpr bool is_not_token_char(char val)
+	{ return (val & 0x80) || is_delimiter(val) || is_not_printable(val); }
+
+	constexpr bool is_token_char(char ch)
+	{ return !is_not_token_char(ch); }
+
 	inline auto is_token(std::string_view str)
 	{
 		if(str.empty())
 		{ return false; }
 
-		if(std::ranges::any_of(str, [](auto val){
-			return (val & 0x80) || is_delimiter(val) || is_not_printable(val);}))
+		if(std::ranges::any_of(str, [](auto val){ return is_not_token_char(val);}))
 		{return false;}
 
 		return true;
