@@ -102,6 +102,42 @@ namespace west::http
 			}
 		}
 	}
+
+	inline std::string encode_uri_component(std::string_view str)
+	{
+		std::string ret;
+		ret.reserve(std::size(str));
+		for(auto const item : str)
+		{
+			if((item >= 'A' && item <= 'Z') ||
+				(item >= 'a' && item <= 'z') ||
+				(item >= '0' && item <= '9') ||
+				item == '-' || item == '_' ||
+				item == '!' || item == '~' ||
+				item == '*' || item == '\'' ||
+				item == '(' || item == ')' || item == '.')
+			{
+				ret.push_back(item);
+			}
+			else
+			{
+				auto const msb = (item & 0xf0) >> 4;
+				auto const lsb = (item & 0x0f);
+
+				auto to_hex_digit = [](auto x) {
+					return (x < 10) ? x + '0' : (x - 10) + 'A';
+				};
+
+				ret.push_back('%');
+				ret.push_back(to_hex_digit(msb));
+				ret.push_back(to_hex_digit(lsb));
+			}
+		}
+
+		return ret;
+	}
+
+	inline std::string decode_uri_component(std::string_view){return "Då";}
 }
 
 #endif
