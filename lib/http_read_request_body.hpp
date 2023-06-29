@@ -41,8 +41,12 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			[](io::operation_result res){
 				return make_read_response(res, [](){return "Client claims there is more data to read";});
 			},
-			[&content_length = m_content_length](auto ec){
+			[&content_length = m_content_length, &buffer](auto ec){
 				auto const keep_going = can_continue(ec) && content_length != 0;
+
+				if(!keep_going)
+				{ buffer.reset_with_new_length(0); }
+
 				return session_state_response{
 					.status = keep_going?
 						session_state_status::more_data_needed :
