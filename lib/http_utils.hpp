@@ -137,7 +137,49 @@ namespace west::http
 		return ret;
 	}
 
-	inline std::string decode_uri_component(std::string_view){return "Då";}
+	inline std::string decode_uri_component(std::string_view str)
+	{
+		std::string ret;
+		ret.reserve(std::size(str));
+		enum class state{normal, escape_1, escape_2};
+		auto current_state = state::normal;
+
+		char decoded_value;
+
+		for(auto const item : str)
+		{
+			auto from_hex_digit = [](auto x) {
+				return x <= '9' ? x - '0' : (x - 'A') + 10;
+			};
+
+			switch(current_state)
+			{
+				case state::normal:
+					switch(item)
+					{
+						case '%':
+							current_state = state::escape_1;
+							break;
+						default:
+							ret.push_back(item);
+					}
+					break;
+
+				case state::escape_1:
+					decoded_value = (from_hex_digit(item)<<4);
+					current_state = state::escape_2;
+					break;
+
+				case state::escape_2:
+					decoded_value |= from_hex_digit(item);
+					ret.push_back(decoded_value);
+					current_state = state::normal;
+					break;
+			};
+		}
+
+		return ret;
+	}
 }
 
 #endif
