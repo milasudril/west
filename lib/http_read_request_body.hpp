@@ -38,11 +38,11 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			return req_handler.process_request_content(buffer);
 		},
 		overload{
-			[](io::operation_result res){
+			[](io::operation_result res, size_t){
 				return make_read_response(res, [](){return "Client claims there is more data to read";});
 			},
-			[&content_length = m_content_length, &buffer](auto ec){
-				auto const keep_going = can_continue(ec) && content_length != 0;
+			[&buffer](auto ec, size_t bytes_to_read){
+				auto const keep_going = can_continue(ec) && bytes_to_read != 0;
 
 				if(!keep_going)
 				{ buffer.reset_with_new_length(0); }

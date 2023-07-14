@@ -59,12 +59,12 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 			return parse_result{static_cast<size_t>(res.ptr - std::begin(buffer)), res.ec};
 		},
 		overload{
-			[](io::operation_result res){
+			[](io::operation_result res, auto&&...){
 				return make_read_response(res, [](){
 					return to_string(req_header_parser_error_code::more_data_needed);
 				});
 			},
-			[&req_header_parser = m_req_header_parser, &session](req_header_parser_error_code ec){
+			[&req_header_parser = m_req_header_parser, &session](req_header_parser_error_code ec, auto&&...){
 				switch(ec)
 				{
 				// GCOVR_EXCL_START

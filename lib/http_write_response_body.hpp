@@ -37,7 +37,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 			return dest.write(buffer);
 		},
 		overload{
-			[](auto ec) {
+			[](auto ec, auto&&...) {
 				auto const keep_going = can_continue(ec);
 				return session_state_response{
 					.status = keep_going ?
@@ -49,7 +49,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 					}
 				};
 			},
-			[](io::operation_result res){ return make_write_response(res); },
+			[](io::operation_result res, auto&&...){ return make_write_response(res); },
 			[]() {
 				return session_state_response{
 					.status = session_state_status::completed,

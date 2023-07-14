@@ -55,7 +55,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 			return dest.write(buffer);
 		},
 		overload{
-			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code){
+			[&buffer = std::as_const(buffer)](resp_header_serializer_error_code, auto&&...){
 				assert(std::size(buffer.span_to_read()) == 0);
 				return session_state_response{
 					.status = session_state_status::completed,
@@ -65,7 +65,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 					}
 				};
 			},
-			[](io::operation_result res){ return make_write_response(res); },
+			[](io::operation_result res, auto&&...){ return make_write_response(res); },
 		// GCOVR_EXCL_START
 			[](){return abort<session_state_response>();}
 		// GCOVR_EXCL_STOP

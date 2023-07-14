@@ -191,10 +191,10 @@ TESTCASE(west_io_adapter_transfer_data_uninteresting_data_in_buffer)
 			return write_result{bytes_to_write,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -240,10 +240,10 @@ TESTCASE(west_io_adapter_transfer_data_fetch_pending_block_and_return_by_write_e
 			return write_result{bytes_to_write,  write_error::exit};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -284,10 +284,10 @@ TESTCASE(west_io_adapter_transfer_data_fetch_pending_block_and_return_by_write_z
 			return write_result{0,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -333,10 +333,10 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			return write_result{bytes_to_write,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -385,10 +385,10 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			return write_result{bytes_to_write,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -437,10 +437,10 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			return write_result{bytes_to_write,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},
@@ -485,10 +485,10 @@ TESTCASE(west_io_adapter_transfer_data_no_pending_data_and_continue_early_eof)
 			return write_result{bytes_to_write,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
-			[](read_error ec){
+			[](read_error ec, auto&&...){
 				return ec == read_error::exit ? retval::exit_by_read : retval::exit_at_end_of_buffer;
 			},
-			[](write_error ec){
+			[](write_error ec, auto&&...){
 				return ec ==write_error::exit ? retval::exit_by_write : retval::exit_at_end_of_buffer;
 			}
 		},

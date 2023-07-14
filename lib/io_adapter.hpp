@@ -35,9 +35,9 @@ namespace west::io_adapter
 	};
 
 	template<class T, class ErrorCode>
-	concept error_code_mapper = requires(T x, ErrorCode ec)
+	concept error_code_mapper = requires(T x, ErrorCode ec, size_t bytes_to_read)
 	{
-		{x(ec)};
+		{x(ec, bytes_to_read)};
 		{x()};
 	};
 
@@ -122,7 +122,7 @@ namespace west::io_adapter
 				using ec_type = detail::ec_type<detail::read_function_res<R>>;
 
 				if(error_code_checker<ec_type>{}(read_result.ec) || read_result.bytes_read == 0)
-				{ return map_error_code(read_result.ec); }
+				{ return map_error_code(read_result.ec, std::as_const(bytes_to_read)); }
 			}
 			else
 			{
@@ -134,7 +134,7 @@ namespace west::io_adapter
 				using ec_type = detail::ec_type<detail::write_function_res<W>>;
 
 				if(error_code_checker<ec_type>{}(write_result.ec) || write_result.bytes_written == 0)
-				{ return map_error_code(write_result.ec); }
+				{ return map_error_code(write_result.ec, std::as_const(bytes_to_read)); }
 			}
 		}
 		return map_error_code();
