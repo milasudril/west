@@ -34,8 +34,8 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		[&src = session.connection](std::span<char> buffer){
 			return src.read(buffer);
 		},
-		[&req_handler = session.request_handler](std::span<char const> buffer, size_t){
-			return req_handler.process_request_content(buffer);
+		[&req_handler = session.request_handler](std::span<char const> buffer, size_t bytes_to_read){
+			return req_handler.process_request_content(buffer, bytes_to_read);
 		},
 		overload{
 			[](io::operation_result res, size_t){

@@ -271,7 +271,7 @@ namespace
 			fields.append("Content-Length", std::to_string(std::size(m_response_body)));
 		}
 
-		auto process_request_content(std::span<char const> buffer)
+		auto process_request_content(std::span<char const> buffer, size_t)
 		{
 			m_request.insert(std::end(m_request), std::begin(buffer), std::end(buffer));
 			return request_handler_write_result{

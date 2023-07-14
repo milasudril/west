@@ -40,7 +40,7 @@ namespace
 	template<test_result Result, bool RejInFinalize = false>
 	struct request_handler
 	{
-		auto process_request_content(std::span<char const> buffer)
+		auto process_request_content(std::span<char const> buffer, size_t)
 		{
 			data_processed.insert(std::end(data_processed), std::begin(buffer), std::end(buffer));
 

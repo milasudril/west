@@ -120,9 +120,9 @@ namespace
 				.append("Content-Type", "text/plain");;
 		}
 
-		auto process_request_content(std::span<char const> buffer)
+		auto process_request_content(std::span<char const> buffer, size_t bytes_to_read)
 		{
-			fprintf(stderr, "Reading request content\n");
+			fprintf(stderr, "Reading request content %zu\n", bytes_to_read);
 			fflush(stderr);
 
 			m_response_body.insert(std::end(m_response_body), std::begin(buffer), std::end(buffer));
