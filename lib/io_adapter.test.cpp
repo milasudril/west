@@ -182,7 +182,7 @@ TESTCASE(west_io_adapter_transfer_data_uninteresting_data_in_buffer)
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::keep_going}; }
 			EXPECT_EQ(std::size(buffer), 13);
@@ -231,7 +231,7 @@ TESTCASE(west_io_adapter_transfer_data_fetch_pending_block_and_return_by_write_e
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::exit}; }
 
@@ -280,7 +280,7 @@ TESTCASE(west_io_adapter_transfer_data_fetch_pending_block_and_return_by_write_z
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const>){
+		[&output_buffer](std::span<char const>, size_t){
 			return write_result{0,  write_error::keep_going};
 		},
 		west::overload{[](){return retval::exit_at_end_of_buffer;},
@@ -324,7 +324,7 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::keep_going}; }
 
@@ -376,7 +376,7 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::keep_going}; }
 
@@ -428,7 +428,7 @@ TESTCASE(west_io_adapter_transfer_data_fail_writing_all_pending_data_and_continu
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::keep_going}; }
 
@@ -476,7 +476,7 @@ TESTCASE(west_io_adapter_transfer_data_no_pending_data_and_continue_early_eof)
 			src_ptr += bytes_to_read;
 			return read_result{bytes_to_read, read_error::keep_going};
 		},
-		[&output_buffer](std::span<char const> buffer){
+		[&output_buffer](std::span<char const> buffer, size_t){
 			if(std::size(buffer) == 0)
 			{ return write_result{0,  write_error::keep_going}; }
 

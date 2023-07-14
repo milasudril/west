@@ -33,7 +33,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 		[&req_handler = session.request_handler](std::span<char> buffer){
 			return req_handler.read_response_content(buffer);
 		},
-		[&dest = session.connection](std::span<char const> buffer) {
+		[&dest = session.connection](std::span<char const> buffer, size_t) {
 			return dest.write(buffer);
 		},
 		overload{

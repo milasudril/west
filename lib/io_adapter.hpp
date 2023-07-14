@@ -29,9 +29,9 @@ namespace west::io_adapter
 	};
 
 	template<class T>
-	concept write_function = requires(T x, std::span<char const> buffer)
+	concept write_function = requires(T x, std::span<char const> buffer, size_t bytes_to_read)
 	{
-		{x(buffer)} -> write_result;
+		{x(buffer, bytes_to_read)} -> write_result;
 	};
 
 	template<class T, class ErrorCode>
@@ -90,7 +90,7 @@ namespace west::io_adapter
 		using read_function_res = std::invoke_result_t<R, std::span<char>>;
 
 		template<class W>
-		using write_function_res = std::invoke_result_t<W, std::span<char const>>;
+		using write_function_res = std::invoke_result_t<W, std::span<char const>, size_t>;
 
 		template<class Result>
 		using ec_type = std::remove_cvref_t<decltype(std::declval<Result>().ec)>;
@@ -127,7 +127,7 @@ namespace west::io_adapter
 			else
 			{
 				auto const span_to_read = buffer.span_to_read(bytes_to_read);
-				auto const write_result = write(span_to_read);
+				auto const write_result = write(span_to_read, std::as_const(bytes_to_read));
 				buffer.consume_elements(write_result.bytes_written);
 				bytes_to_read -= write_result.bytes_written;
 

@@ -48,7 +48,7 @@ template<west::io::data_source Source, class RequestHandler, size_t BufferSize>
 		[&src = session.connection](std::span<char> buffer){
 			return src.read(buffer);
 		},
-		[&req_header_parser = m_req_header_parser](std::span<char const> buffer){
+		[&req_header_parser = m_req_header_parser](std::span<char const> buffer, size_t){
 			struct parse_result
 			{
 				size_t bytes_written;

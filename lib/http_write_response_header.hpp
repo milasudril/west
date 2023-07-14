@@ -51,7 +51,7 @@ template<west::io::data_sink Sink, class RequestHandler, size_t BufferSize>
 			auto res = m_serializer.serialize(buffer);
 			return read_result{static_cast<size_t>(res.ptr - std::data(buffer)), res.ec};
 		},
-		[&dest = session.connection](std::span<char const> buffer){
+		[&dest = session.connection](std::span<char const> buffer, size_t){
 			return dest.write(buffer);
 		},
 		overload{
